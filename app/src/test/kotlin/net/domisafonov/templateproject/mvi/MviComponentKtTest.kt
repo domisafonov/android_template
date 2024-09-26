@@ -2,6 +2,7 @@
 
 package net.domisafonov.templateproject.mvi
 
+import androidx.compose.runtime.SideEffect
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -488,8 +489,8 @@ class MviComponentKtTest {
         val (component, errors) = makeWishErrorComponent(scope = scope)
         component.sendWish(Wish.Plus10)
         component.sendWish(Wish.Plus200)
-        component.state.filter { it.value == 201 }.first()
-        errors.close()
+        component.sendWish(Wish.Plus1000)
+        component.state.filter { it.value == 1201 }.first()
         assertThat(errors.consumeAsFlow().toList().map { it::class }).containsExactly(Exception::class)
     }
 
@@ -529,7 +530,8 @@ class MviComponentKtTest {
         component.sendWish(Wish.Plus300)
         component.sendWish(Wish.Plus3)
         component.state.filter { it.value == 9 }.first()
-        errors.close()
+        component.sendWish(Wish.Plus1000)
+        component.state.filter { it.value == 1009 }.first()
         assertThat(errors.consumeAsFlow().toList().map { it::class })
             .containsExactly(Exception::class, Exception::class, Exception::class)
     }
@@ -834,7 +836,7 @@ class MviComponentKtTest {
         assertThat(actor.concMax.get()).isGreaterThan(1)
     }
 
-    @Test
+    @Test(expected = AssertionError::class)
     fun sideEffectCapacityLow() = runTest { scope ->
         val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
             scope = scope,
@@ -842,15 +844,36 @@ class MviComponentKtTest {
             wishToAction = ::wishToAction,
             actor = ::actor,
             reducer = ::reducer,
-            wishCapacity = 128,
+            sideEffectSource = { oldState, newState, action, effect -> when {
+                effect is Effect.Plus && effect.amount == 1 -> (0 .. 128).map { SideEffect.SideEffect1 }
+                else -> emptyList()
+            } },
             sideEffectBufferCapacity = 1,
         )
-        TODO()
+        component.sendWish(Wish.Plus1)
+        component.state.filter { it.value == 2 }.first()
+        component.sideEffects.first()
+        component.sideEffects.take(128).toList()
     }
 
     @Test
     fun sideEffectCapacityHigh() = runTest { scope ->
-        TODO()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            sideEffectSource = { oldState, newState, action, effect -> when {
+                effect is Effect.Plus && effect.amount == 1 -> (0 .. 128).map { SideEffect.SideEffect1 }
+                else -> emptyList()
+            } },
+            sideEffectBufferCapacity = 128,
+        )
+        component.sendWish(Wish.Plus1)
+        component.state.filter { it.value == 2 }.first()
+        component.sideEffects.first()
+        component.sideEffects.take(128).toList()
     }
 
     private fun runTest(
@@ -940,6 +963,7 @@ private sealed interface Wish {
     data object Plus200 : Wish
     data object Plus201 : Wish
     data object Plus300 : Wish
+    data object Plus1000 : Wish
     data object Multiplus100 : Wish
     data object ActorMultiplus100: Wish
 }
@@ -975,6 +999,7 @@ private fun wishToAction(wish: Wish): List<Action> = when (wish) {
     is Wish.Plus200 -> listOf(Action.Plus(200))
     is Wish.Plus201 -> listOf(Action.Plus(201))
     is Wish.Plus300 -> listOf(Action.Plus(300))
+    is Wish.Plus1000 -> listOf(Action.Plus(1000))
     is Wish.Multiplus100 -> listOf(Action.Plus(50), Action.Plus(50))
     is Wish.ActorMultiplus100 -> listOf(Action.DoublePlus(50))
 }
@@ -1010,6 +1035,10 @@ private fun makeWishErrorComponent(
                 is Wish.Plus1 -> throw UniqueError()
                 is Wish.Plus10 -> throw Exception()
                 is Wish.Plus200 -> listOf(Action.Plus(200))
+                is Wish.Plus1000 -> {
+                    errors.close()
+                    listOf(Action.Plus(1000))
+                }
                 else -> throw UniqueException()
             }
         },
@@ -1025,7 +1054,7 @@ private fun makeWishErrorComponent(
 private fun makeActorErrorComponent(
     scope: CoroutineScope,
 ): Pair<MviComponent<State, Wish, SideEffect>, Channel<Exception>> {
-    val errors = Channel<java.lang.Exception>(Channel.BUFFERED)
+    val errors = Channel<Exception>(Channel.BUFFERED)
 
     return mviComponent<State, Wish, Action, Effect, SideEffect>(
         scope = scope,
@@ -1041,6 +1070,7 @@ private fun makeActorErrorComponent(
                     11 -> throw UniqueException()
                     201 -> throw UniqueError()
                     300 -> flow { emit(Effect.Plus(5)); throw Exception() }
+                    1000 -> { errors.close(); flowOf(Effect.Plus(1000)) }
                     else -> flowOf(Effect.Plus(amount))
                 }
             }
