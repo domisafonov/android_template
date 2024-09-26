@@ -59,6 +59,9 @@ android {
     kapt {
         correctErrorTypes = true
     }
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }
 
 dependencies {
