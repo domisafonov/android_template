@@ -62,7 +62,6 @@ class MviComponentKtTest {
             } },
         )
         component.sendWish(Wish.Plus200)
-        testScheduler.advanceUntilIdle()
         assertThat(component.sideEffects.take(3).toList())
             .containsExactly(SideEffect.SideEffect1, SideEffect.SideEffect2, SideEffect.SideEffect2)
         component.state.filter { it.value == 501 }.first()
@@ -225,23 +224,71 @@ class MviComponentKtTest {
     }
 
     @Test
-    fun returnMultipleFromWishToAction() = runTest { scope -> // bootstrapper, send
-        TODO()
+    fun returnMultipleFromWishToAction() = runTest { scope ->
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = { state, effect -> callCount.getAndIncrement(); reducer(state, effect) },
+            actionConcurrencyLimit = 1,
+        )
+        component.sendWish(Wish.Multiplus100)
+        component.state.filter { it.value == 101 }.first()
     }
 
     @Test
     fun returnMultipleFromActor() = runTest { scope -> // normal, from postprocessor
-        TODO()
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = { state, effect -> callCount.getAndIncrement(); reducer(state, effect) },
+            actionConcurrencyLimit = 1,
+        )
+        component.sendWish(Wish.ActorMultiplus100)
+        component.state.filter { it.value == 101 }.first()
     }
 
     @Test
     fun returnMultipleFromPostProcessor() = runTest { scope ->
-        TODO()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus ->
+                    listOf(Action.Plus(500), Action.Plus(500))
+                else -> emptyList()
+            } },
+        )
+        component.state.filter { it.value == 1101 }.first()
     }
 
     @Test
     fun returnMultipleFromSideEffectProducer() = runTest { scope ->
-        TODO()
+        val component = mviComponent(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            sideEffectSource = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus ->
+                    listOf(SideEffect.SideEffect1, SideEffect.SideEffect1)
+                else -> emptyList()
+            } },
+        )
+        assertThat(component.sideEffects.take(2).toList())
+            .containsExactly(SideEffect.SideEffect1, SideEffect.SideEffect1)
+        component.state.filter { it.value == 101 }.first()
     }
 
     @Test
@@ -367,10 +414,13 @@ private sealed interface Wish {
     data object Plus1 : Wish
     data object Plus10 : Wish
     data object Plus200 : Wish
+    data object Multiplus100 : Wish
+    data object ActorMultiplus100: Wish
 }
 
 private sealed interface Action {
     data class Plus(val amount: Int) : Action
+    data class DoublePlus(val amount: Int) : Action
     data object Empty : Action
     data object Ineffective : Action
 }
@@ -392,10 +442,13 @@ private fun wishToAction(wish: Wish): List<Action> = when (wish) {
     is Wish.Plus1 -> listOf(Action.Plus(1))
     is Wish.Plus10 -> listOf(Action.Plus(10))
     is Wish.Plus200 -> listOf(Action.Plus(200))
+    is Wish.Multiplus100 -> listOf(Action.Plus(50), Action.Plus(50))
+    is Wish.ActorMultiplus100 -> listOf(Action.DoublePlus(50))
 }
 
 private fun actor(state: State, action: Action): Flow<Effect> = when (action) {
     is Action.Plus -> flowOf(Effect.Plus(amount = action.amount))
+    is Action.DoublePlus -> flowOf(Effect.Plus(amount = action.amount), Effect.Plus(amount = action.amount))
     is Action.Empty -> emptyFlow()
     is Action.Ineffective -> flowOf(Effect.NoEffect)
 }
