@@ -15,12 +15,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.flatMapMerge
+import kotlinx.coroutines.flow.flattenConcat
+import kotlinx.coroutines.flow.flattenMerge
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
@@ -106,25 +109,37 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> Coro
     }
 
     launch {
-
         val inducedActions = Channel<Action>(Channel.UNLIMITED)
 
         val allActions = merge(
             bootstrapper.asFlow(),
-            input.consumeAsFlow().flatMapConcat { wishToAction(it).asFlow() },
+            input.consumeAsFlow()
+                .mapNotNull { wrap { wishToAction(it) }?.asFlow() }
+                .flattenConcat(),
             inducedActions.consumeAsFlow(),
         )
 
         allActions
-            .flatMapMerge(concurrency = actionConcurrencyLimit) { action ->
-                actor(state.value, action).map { action to it }
+            .mapNotNull { action ->
+                wrap { actor(state.value, action) }
+                    ?.catch { e ->
+                        e as? Exception ?: throw e
+                        if (BuildConfig.DEBUG) {
+                            throw e
+                        } else {
+                            Timber.e(e, "error in flow from actor")
+                            emptyFlow<Effect>()
+                        }
+                    }
+                    ?.map { action to it }
             }
+            .flattenMerge(concurrency = actionConcurrencyLimit)
             .collect { (action, effect) ->
                 val oldState = state.value
-                val newState = reducer(oldState, effect)
+                val newState = wrap { reducer(oldState, effect) } ?: return@collect
                 state.value = newState
-                postProcessor(oldState, newState, action, effect).forEach { inducedActions.send(it) }
-                sideEffectSource(oldState, newState, action, effect).forEach { sideEffects.trySend(it) }
+                wrap { postProcessor(oldState, newState, action, effect) }?.forEach { inducedActions.trySend(it) }
+                wrap { sideEffectSource(oldState, newState, action, effect) }?.forEach { sideEffects.trySend(it) }
             }
     }
 
@@ -142,3 +157,14 @@ private val ResettingReplayCacheOnZeroImpl = SharingStarted { subscriptionCount 
 }
 
 private val SharingStarted.Companion.ResettingReplayCacheOnZero get() = ResettingReplayCacheOnZeroImpl
+
+private inline fun <R : Any> wrap(lambda: () -> R): R? = try {
+    lambda()
+} catch (e: Exception) {
+    if (BuildConfig.DEBUG) {
+        throw e
+    } else {
+        Timber.e(e, "error in mvi callbacks")
+        null
+    }
+}
