@@ -34,12 +34,13 @@ import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.lang.AssertionError
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.AssertionError
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
 class MviComponentKtTest {
@@ -764,23 +765,91 @@ class MviComponentKtTest {
             )
     }
 
+    @Test(expected = AssertionError::class)
+    fun wishCapacityLow() = runTest { scope ->
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            wishCapacity = 1,
+        )
+        for (i in 0 until DEFAULT_WISH_CAPACITY) {
+            component.sendWish(Wish.Plus1)
+        }
+        component.state.filter { it.value == DEFAULT_WISH_CAPACITY + 1 }.first()
+    }
+
     @Test
-    fun actorGetsConsistentState() = runTest { scope ->
+    fun wishCapacityHigh() = runTest { scope ->
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            wishCapacity = 512,
+        )
+        for (i in 0 until 512) {
+            component.sendWish(Wish.Plus1)
+        }
+        component.state.filter { it.value == 513 }.first()
+    }
+
+    @Test
+    fun concurrencyOne() = runTest { scope ->
+        val actor = ConcurrencyCountingActor()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = { state, action -> flow { actor.act(state, action).collect { emit(it) } } },
+            reducer = ::reducer,
+            wishCapacity = 128,
+            actionConcurrencyLimit = 1,
+        )
+        for (i in 0 until 128) {
+            component.sendWish(Wish.Plus1)
+        }
+        component.state.filter { it.value == 129 }.first()
+        assertThat(actor.concMax.get()).isEqualTo(1)
+    }
+
+    @Test
+    fun concurrencyMultiple() = runTest { scope ->
+        val actor = ConcurrencyCountingActor()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = { state, action -> flow { actor.act(state, action).collect { emit(it) } } },
+            reducer = ::reducer,
+            wishCapacity = 128,
+        )
+        for (i in 0 until 128) {
+            component.sendWish(Wish.Plus1)
+        }
+        component.state.filter { it.value == 129 }.first()
+        assertThat(actor.concMax.get()).isGreaterThan(1)
+    }
+
+    @Test
+    fun sideEffectCapacityLow() = runTest { scope ->
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            wishCapacity = 128,
+            sideEffectBufferCapacity = 1,
+        )
         TODO()
     }
 
     @Test
-    fun postProcessorGetsConsistentOldNewState() = runTest { scope ->
-        TODO()
-    }
-
-    @Test
-    fun sideEffectProducerGetsConsistentOldNewState() = runTest { scope ->
-        TODO()
-    }
-
-    @Test
-    fun limits() = runTest { scope ->
+    fun sideEffectCapacityHigh() = runTest { scope ->
         TODO()
     }
 
@@ -815,6 +884,22 @@ class MviComponentKtTest {
                     scopeError.error = null
                     throw it
                 }
+            }
+        }
+    }
+
+    private class ConcurrencyCountingActor {
+        val concCount = AtomicInteger()
+        val concMax = AtomicInteger()
+
+        suspend fun act(state: State, action: Action): Flow<Effect> {
+            val concCurrent = concCount.incrementAndGet()
+            concMax.updateAndGet { max(it, concCurrent) }
+            try {
+                delay(1.milliseconds)
+                return actor(state, action)
+            } finally {
+                concCount.getAndDecrement()
             }
         }
     }

@@ -32,9 +32,9 @@ import kotlinx.coroutines.withContext
 import net.domisafonov.templateproject.BuildConfig
 import timber.log.Timber
 
-private const val DEFAULT_WISH_CAPACITY = 64
-private const val DEFAULT_SIDE_EFFECT_BUFFER_CAPACITY = 64
-private const val DEFAULT_ACTION_CONCURRENCY_LIMIT = 16
+internal const val DEFAULT_WISH_CAPACITY = 64
+internal const val DEFAULT_SIDE_EFFECT_BUFFER_CAPACITY = 64
+internal const val DEFAULT_ACTION_CONCURRENCY_LIMIT = 16
 internal fun defaultErrorHandler(e: Exception): Boolean = // TODO: non-android variation for KMP
     if (BuildConfig.DEBUG) {
         false
@@ -88,7 +88,7 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
 
     val input = Channel<Wish>(
         capacity = wishCapacity,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        onBufferOverflow = BufferOverflow.DROP_LATEST,
         onUndeliveredElement = { Timber.e(
             if (BuildConfig.DEBUG) {
                 "undelivered wish: $it"
