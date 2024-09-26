@@ -20,7 +20,7 @@ class WordCountScreenViewModel @Inject constructor(
     private val refreshAboutPageUc: RefreshAboutPageUc,
 ) : ViewModel() {
 
-    val wordCountText: Flow<String?> = observeWordCountTextUc.execute()
+    val wordCountLines: Flow<List<String>?> = observeWordCountTextUc.execute()
         .shareIn(viewModelScope, SharingStarted.Eagerly, replay = 1)
 
     private val _isRefreshCompleted = MutableStateFlow(false)

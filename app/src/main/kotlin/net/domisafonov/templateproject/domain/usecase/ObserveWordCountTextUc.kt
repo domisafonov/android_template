@@ -6,7 +6,7 @@ import net.domisafonov.templateproject.domain.repository.PageRepository
 import net.domisafonov.templateproject.ui.ABOUT_PAGE_URL
 
 fun interface ObserveWordCountTextUc {
-    fun execute(): Flow<String?>
+    fun execute(): Flow<List<String>?>
 }
 
 class ObserveWordCountTextUcImpl(
@@ -14,6 +14,6 @@ class ObserveWordCountTextUcImpl(
     private val makeWordCountTextUc: MakeWordCountTextUc,
 ) : ObserveWordCountTextUc {
 
-    override fun execute(): Flow<String?> = pageRepository.observePage(ABOUT_PAGE_URL)
+    override fun execute(): Flow<List<String>?> = pageRepository.observePage(ABOUT_PAGE_URL)
         .map { page -> page?.let { makeWordCountTextUc.execute(page.contents) } }
 }

@@ -21,32 +21,32 @@ class MakeWordCountTextUcImplTest {
 
     @Test
     fun oneWord() = runTest {
-        assertThat(uc.execute("a")).isEqualTo("\"a\": 1")
+        assertThat(uc.execute("a")).isEqualTo(listOf("\"a\": 1"))
     }
 
     @Test
     fun multipleOfOneWord() = runTest {
-        assertThat(uc.execute("a a a")).isEqualTo("\"a\": 3")
+        assertThat(uc.execute("a a a")).isEqualTo(listOf("\"a\": 3"))
     }
 
     @Test
     fun longSpaces() = runTest {
-        assertThat(uc.execute("a   a  a")).isEqualTo("\"a\": 3")
+        assertThat(uc.execute("a   a  a")).isEqualTo(listOf("\"a\": 3"))
     }
 
     @Test
     fun differentSpaces() = runTest {
-        assertThat(uc.execute("a \t\ra\n a")).isEqualTo("\"a\": 3")
+        assertThat(uc.execute("a \t\ra\n a")).isEqualTo(listOf("\"a\": 3"))
     }
 
     @Test
     fun edgeSpaces() = runTest {
-        assertThat(uc.execute(" a a a\t")).isEqualTo("\"a\": 3")
+        assertThat(uc.execute(" a a a\t")).isEqualTo(listOf("\"a\": 3"))
     }
 
     @Test
     fun multipleWords() = runTest {
         assertThat(uc.execute("hamster ham\uD83C\uDF09 ハムスター хомяк ham\uD83C\uDF09"))
-            .isEqualTo("\"hamster\": 1\n\"ham\uD83C\uDF09\": 2\n\"хомяк\": 1\n\"ハムスター\": 1")
+            .isEqualTo(listOf("\"hamster\": 1", "\"ham\uD83C\uDF09\": 2", "\"хомяк\": 1", "\"ハムスター\": 1"))
     }
 }

@@ -19,19 +19,17 @@ import kotlinx.coroutines.withContext
  */
 fun interface MakeWordCountTextUc {
 
-    suspend fun execute(src: String): String
+    suspend fun execute(src: String): List<String>
 }
 
 class MakeWordCountTextUcImpl(
     private val ioDispatcher: CoroutineDispatcher,
 ) : MakeWordCountTextUc {
 
-    override suspend fun execute(src: String): String = withContext(ioDispatcher) {
+    override suspend fun execute(src: String): List<String> = withContext(ioDispatcher) {
         val words = mutableMapOf<String, Int>()
         src.split("\\s++".toPattern()).forEach { words[it] = (words[it] ?: 0) + 1 }
         words.remove("")
-        words.toSortedMap().entries.joinToString(separator = "\n") { (word, count) ->
-            "\"$word\": $count"
-        }
+        words.toSortedMap().map { (word, count) -> "\"$word\": $count" }
     }
 }
