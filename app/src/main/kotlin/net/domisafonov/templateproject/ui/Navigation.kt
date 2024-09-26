@@ -48,7 +48,7 @@ private fun NavGraphBuilder.composable(
     arguments: List<NamedNavArgument> = emptyList(),
     deepLinks: List<NavDeepLink> = emptyList(),
     label: String? = null,
-    content: @Composable (NavBackStackEntry) -> Unit
+    content: @Composable (NavBackStackEntry) -> Unit,
 ) {
     addDestination(
         ComposeNavigator.Destination(provider[ComposeNavigator::class], content).apply {

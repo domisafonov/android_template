@@ -12,11 +12,11 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.map
 import net.domisafonov.templateproject.R
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun TopBar(appState: AppState) {
 
     val defaultLabel = stringResource(id = R.string.default_label)
@@ -35,11 +35,23 @@ fun TopBar(appState: AppState) {
             )
         )
 
+    TopBarUi(
+        state = state,
+        onBackButtonClick = { appState.navController.popBackStack() },
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun TopBarUi(
+    state: TopBarState,
+    onBackButtonClick: () -> Unit = {},
+) {
     TopAppBar(
         title = { Text(state.title) },
         navigationIcon = {
             if (state.hasBackButton) {
-                IconButton(onClick = { appState.navController.popBackStack() }) {
+                IconButton(onClick = onBackButtonClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = stringResource(id = R.string.back_button_description),
@@ -48,6 +60,18 @@ fun TopBar(appState: AppState) {
             }
         }
     )
+}
+
+@Preview
+@Composable
+fun TopBarUiPreviewWithBack() {
+    TopBarUi(state = TopBarState("Title", hasBackButton = false))
+}
+
+@Preview
+@Composable
+fun TopBarUiPreviewWithoutBack() {
+    TopBarUi(state = TopBarState("Title", hasBackButton = true))
 }
 
 @Stable
