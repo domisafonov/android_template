@@ -12,6 +12,7 @@ junit = "4.13.2"
 junitVersion = "1.2.1"
 kotlin = "2.0.0"
 kotlin-compiler-extension = "1.5.14"
+kotlin-parcelize = "2.0.10"
 ksp = "2.0.0-1.0.23"
 lifecycleRuntimeKtx = "2.8.4"
 protobuf = "3.19.4"
@@ -59,3 +60,4 @@ hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 protobuf-plugin = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
+kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin-parcelize" }

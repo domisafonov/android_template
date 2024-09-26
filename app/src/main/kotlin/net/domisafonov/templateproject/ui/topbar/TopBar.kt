@@ -17,7 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.map
 import net.domisafonov.templateproject.R
 import net.domisafonov.templateproject.ui.AppState
-import net.domisafonov.templateproject.ui.MAIN_NAV_ID
+import net.domisafonov.templateproject.ui.navigation.MAIN_NAV_ID
 
 @Composable
 fun TopBar(appState: AppState) {

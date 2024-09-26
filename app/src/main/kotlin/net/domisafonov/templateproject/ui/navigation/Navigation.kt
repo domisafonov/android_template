@@ -1,4 +1,4 @@
-package net.domisafonov.templateproject.ui
+package net.domisafonov.templateproject.ui.navigation
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
@@ -19,6 +19,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.consumeAsFlow
 import net.domisafonov.templateproject.R
+import net.domisafonov.templateproject.ui.AppState
+import net.domisafonov.templateproject.ui.EVENT_CAPACITY
 import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreen
 import net.domisafonov.templateproject.ui.mainscreen.MainScreen
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBar
@@ -54,13 +56,18 @@ fun NavHost(
             label = mainLabel,
         ) { _, controller ->
             MainScreen(
-                coordinator = MainScreenCoordinatorImpl(navController = appState.navController),
+                coordinator = rememberCoordinator {
+                    MainScreenCoordinatorImpl(navController = appState.navController)
+                },
                 appBarController = controller,
+                snackbarHostState = appState.snackbarHostState,
             )
         }
         dialog(route = "main/url_dialog") {
             UrlDialog(
-                coordinator = UrlDialogCoordinatorImpl(navHostController = appState.navController)
+                coordinator = rememberCoordinator {
+                    UrlDialogCoordinatorImpl(navHostController = appState.navController)
+                }
             )
         }
 

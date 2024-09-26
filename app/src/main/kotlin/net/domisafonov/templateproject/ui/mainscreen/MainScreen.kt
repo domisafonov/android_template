@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,35 +18,51 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
 import net.domisafonov.templateproject.R
 import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreen
 import net.domisafonov.templateproject.ui.topbar.AppBarController
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
+import net.domisafonov.templateproject.util.flowWhenResumed
 
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
     coordinator: MainScreenCoordinator,
     appBarController: AppBarController<MainScreenAppBarState, MainScreenAppBarEvent>,
+    snackbarHostState: SnackbarHostState,
 ) {
     val viewModel: MainScreenViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
 
+    val urlEditedMessage = stringResource(R.string.url_edited_message)
     LaunchedEffect(Unit) {
         viewModel.commands.collect { when (it) {
-            is MainScreenMvi.Command.UrlNotEditedMessage -> TODO()
+            is MainScreenMvi.Command.UrlEditedMessage -> snackbarHostState.showSnackbar(
+                message = urlEditedMessage,
+            )
         } }
     }
+
     LaunchedEffect(Unit) {
         viewModel.navigation.collect { when (it) {
             is MainScreenMvi.Navigation.GoToTenth -> coordinator.openTenthCharacter()
             is MainScreenMvi.Navigation.GoToWordCount -> coordinator.openWordCount()
             is MainScreenMvi.Navigation.GoToUrlEditor -> coordinator.openUrlEditor()
         } }
+    }
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        coordinator.urlEditorResult.flowWhenResumed(lifecycle).collect {
+            viewModel.onUrlEdit()
+        }
     }
 
     if (state.isActivated) {

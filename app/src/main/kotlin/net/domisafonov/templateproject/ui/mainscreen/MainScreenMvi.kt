@@ -17,6 +17,7 @@ object MainScreenMvi {
         data object TenthClick : Wish
         data object WordCountClick : Wish
         data object UrlButtonClick : Wish
+        data object UrlEdited : Wish
     }
 
     sealed interface Action {
@@ -24,6 +25,7 @@ object MainScreenMvi {
         data object GoToTenth : Action
         data object GoToWordCount : Action
         data object GoToUrlEditor : Action
+        data object MessageSuccessfulUrlEdit : Action
     }
 
     sealed interface Effect {
@@ -40,6 +42,7 @@ object MainScreenMvi {
             is Action.GoToTenth -> flowOf(Effect.NoEffect)
             is Action.GoToWordCount -> flowOf(Effect.NoEffect)
             is Action.GoToUrlEditor -> flowOf(Effect.NoEffect)
+            is Action.MessageSuccessfulUrlEdit -> flowOf(Effect.NoEffect)
         }
     }
 
@@ -50,7 +53,7 @@ object MainScreenMvi {
 
     sealed interface SideEffect
     sealed interface Command : SideEffect {
-        data object UrlNotEditedMessage : Command
+        data object UrlEditedMessage : Command
     }
     sealed interface Navigation : SideEffect {
         data object GoToTenth : Navigation
@@ -71,6 +74,7 @@ object MainScreenMvi {
             is Wish.TenthClick -> listOf(Action.GoToTenth)
             is Wish.WordCountClick -> listOf(Action.GoToWordCount)
             is Wish.UrlButtonClick -> listOf(Action.GoToUrlEditor)
+            is Wish.UrlEdited -> listOf(Action.MessageSuccessfulUrlEdit)
         } },
         actor = actor::execute,
         reducer = ::reduce,
@@ -78,6 +82,7 @@ object MainScreenMvi {
             action is Action.GoToTenth && effect is Effect.NoEffect -> listOf(Navigation.GoToTenth)
             action is Action.GoToWordCount && effect is Effect.NoEffect -> listOf(Navigation.GoToWordCount)
             action is Action.GoToUrlEditor && effect is Effect.NoEffect -> listOf(Navigation.GoToUrlEditor)
+            action is Action.MessageSuccessfulUrlEdit && effect is Effect.NoEffect -> listOf(Command.UrlEditedMessage)
             else -> emptyList()
         } },
     )

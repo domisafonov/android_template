@@ -41,4 +41,8 @@ class MainScreenViewModel @Inject constructor(
     fun onUrlButtonClick() {
         mvi.sendWish(MainScreenMvi.Wish.UrlButtonClick)
     }
+
+    fun onUrlEdit() {
+        mvi.sendWish(MainScreenMvi.Wish.UrlEdited)
+    }
 }

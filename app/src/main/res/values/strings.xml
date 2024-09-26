@@ -13,6 +13,7 @@
 
     <string name="url_dialog_title">Page URL</string>
     <string name="invalid_url_error">Invalid URL</string>
+    <string name="url_edited_message">New URL set successfully</string>
 
     <string name="is_offline_message">No network connection</string>
     <string name="is_online_message">Network connection restored</string>

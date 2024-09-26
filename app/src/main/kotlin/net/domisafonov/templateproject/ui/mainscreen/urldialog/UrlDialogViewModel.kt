@@ -29,8 +29,8 @@ class UrlDialogViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _isDismissed = MutableStateFlow(false)
-    val isDismissed: StateFlow<Boolean> = _isDismissed.asStateFlow()
+    private val _isDismissedOnSuccess = MutableStateFlow(false)
+    val isDismissedOnSuccess: StateFlow<Boolean> = _isDismissedOnSuccess.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -57,7 +57,7 @@ class UrlDialogViewModel @Inject constructor(
                 return@launch
             }
             saveUrlUc.execute(_text.value)
-            _isDismissed.value = true
+            _isDismissedOnSuccess.value = true
         }
     }
 }

@@ -1,11 +1,18 @@
 package net.domisafonov.templateproject.ui.mainscreen
 
 import androidx.navigation.NavController
+import kotlinx.coroutines.flow.Flow
+import net.domisafonov.templateproject.ui.navigation.Coordinator
+import net.domisafonov.templateproject.ui.mainscreen.urldialog.UrlDialogResult
+import net.domisafonov.templateproject.ui.navigation.bindResult
 
-interface MainScreenCoordinator {
+interface MainScreenCoordinator : Coordinator {
     fun openTenthCharacter()
+
     fun openWordCount()
+
     fun openUrlEditor()
+    val urlEditorResult: Flow<UrlDialogResult>
 }
 
 class MainScreenCoordinatorImpl(
@@ -19,7 +26,11 @@ class MainScreenCoordinatorImpl(
         navController.navigate("details/word_count")
     }
 
+    private val urlEditorBinder = navController.bindResult<UrlDialogResult>(selfRoute = "main")
     override fun openUrlEditor() {
-        navController.navigate("main/url_dialog")
+        urlEditorBinder.launch {
+            navController.navigate("main/url_dialog")
+        }
     }
+    override val urlEditorResult: Flow<UrlDialogResult> get() = urlEditorBinder.results
 }

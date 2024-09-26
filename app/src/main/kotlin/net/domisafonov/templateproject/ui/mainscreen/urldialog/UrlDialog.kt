@@ -1,5 +1,6 @@
 package net.domisafonov.templateproject.ui.mainscreen.urldialog
 
+import android.os.Parcelable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.parcelize.Parcelize
 import net.domisafonov.templateproject.R
 
 @Composable
@@ -30,11 +32,11 @@ fun UrlDialog(
 
     val text by viewModel.text.collectAsState()
     val error by viewModel.error.collectAsState()
-    val isDismissed by viewModel.isDismissed.collectAsState()
+    val isDismissedOnSuccess by viewModel.isDismissedOnSuccess.collectAsState()
 
-    LaunchedEffect(isDismissed) {
-        if (isDismissed) {
-            coordinator.goBack()
+    LaunchedEffect(isDismissedOnSuccess) {
+        if (isDismissedOnSuccess) {
+            coordinator.goBack(isSuccessful = true)
         }
     }
 
@@ -95,6 +97,9 @@ fun UrlDialogUi(
         }
     }
 }
+
+@Parcelize
+class UrlDialogResult : Parcelable
 
 @Preview(showBackground = true)
 @Composable

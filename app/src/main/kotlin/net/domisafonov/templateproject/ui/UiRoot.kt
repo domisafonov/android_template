@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import net.domisafonov.templateproject.R
+import net.domisafonov.templateproject.ui.navigation.NavHost
 import net.domisafonov.templateproject.ui.theme.TemplateProjectTheme
 import net.domisafonov.templateproject.ui.topbar.TopBar
 
