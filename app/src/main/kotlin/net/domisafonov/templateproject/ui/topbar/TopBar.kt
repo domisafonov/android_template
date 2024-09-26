@@ -1,5 +1,6 @@
-package net.domisafonov.templateproject.ui
+package net.domisafonov.templateproject.ui.topbar
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -15,23 +16,29 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.map
 import net.domisafonov.templateproject.R
+import net.domisafonov.templateproject.ui.AppState
+import net.domisafonov.templateproject.ui.MAIN_NAV_ID
 
 @Composable
 fun TopBar(appState: AppState) {
 
     val defaultLabel = stringResource(id = R.string.default_label)
 
+    val topBarActions = appState.appBarActions.value
+
     val state by appState.navController.currentBackStackEntryFlow
         .map {
             TopBarState(
                 title = it.destination.label?.toString() ?: defaultLabel,
                 hasBackButton = it.destination.route != MAIN_NAV_ID,
+                actions = topBarActions ?: {},
             )
         }
         .collectAsState(
             initial = TopBarState(
                 title = defaultLabel,
                 hasBackButton = false,
+                actions = {},
             )
         )
 
@@ -58,24 +65,26 @@ private fun TopBarUi(
                     )
                 }
             }
-        }
+        },
+        actions = state.actions,
     )
 }
 
 @Preview
 @Composable
 fun TopBarUiPreviewWithBack() {
-    TopBarUi(state = TopBarState("Title", hasBackButton = false))
+    TopBarUi(state = TopBarState("Title", hasBackButton = false, actions = {}))
 }
 
 @Preview
 @Composable
 fun TopBarUiPreviewWithoutBack() {
-    TopBarUi(state = TopBarState("Title", hasBackButton = true))
+    TopBarUi(state = TopBarState("Title", hasBackButton = true, actions = {}))
 }
 
 @Stable
 private data class TopBarState(
     val title: String,
     val hasBackButton: Boolean,
+    val actions: @Composable RowScope.() -> Unit,
 )

@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import net.domisafonov.templateproject.R
 import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreen
 import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreenUiCompactPreview
+import net.domisafonov.templateproject.ui.topbar.AppBarController
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreenUiCompactPreview
 
@@ -32,17 +33,20 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     onTenthClick: () -> Unit,
     onWordCountClick: () -> Unit,
+    appBarController: AppBarController<MainScreenAppBarState, Unit>,
 ) {
     val viewModel: MainScreenViewModel = hiltViewModel()
     val isActivated by viewModel.isActivated.collectAsState()
 
     if (isActivated) {
+        appBarController.setState(MainScreenAppBarState(isActivated = true))
         ActivatedUi(
             modifier = modifier,
             onTenthClick = onTenthClick,
             onWordCountClick = onWordCountClick,
         )
     } else {
+        appBarController.setState(MainScreenAppBarState(isActivated = false))
         NonActivatedUi(
             modifier = modifier,
             onButtonClick = { viewModel.onButtonClick() },
