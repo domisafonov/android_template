@@ -11,9 +11,9 @@ import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.get
 import net.domisafonov.templateproject.R
-import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreenUi
-import net.domisafonov.templateproject.ui.mainscreen.MainScreenUi
-import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreenUi
+import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreen
+import net.domisafonov.templateproject.ui.mainscreen.MainScreen
+import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
 
 const val MAIN_NAV_ID = "main"
 
@@ -32,14 +32,14 @@ fun NavHost(
         modifier = modifier,
     ) {
         composable(route = MAIN_NAV_ID, label = mainLabel) {
-            MainScreenUi(
+            MainScreen(
                 onTenthClick = { appState.navController.navigate("details/tenchcharacter") },
                 onWordCountClick = { appState.navController.navigate("details/wordcount") },
             )
         }
 
-        composable(route = "details/tenchcharacter", label = tenthLabel) { TenthCharacterScreenUi() }
-        composable(route = "details/wordcount", label = wordCountLabel) { WordCountScreenUi() }
+        composable(route = "details/tenchcharacter", label = tenthLabel) { TenthCharacterScreen() }
+        composable(route = "details/wordcount", label = wordCountLabel) { WordCountScreen() }
     }
 }
 
