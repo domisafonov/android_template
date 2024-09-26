@@ -1,23 +1,33 @@
+@file:OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
+
 package net.domisafonov.templateproject.mvi
 
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.test.TestScope
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.lang.AssertionError
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
@@ -292,22 +302,86 @@ class MviComponentKtTest {
     }
 
     @Test
-    fun actionProducesValuesOverTime() = runTest { scope ->
-        TODO()
+    fun parallelActions() = runTest { scope ->
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.LongMulti),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, action, _ -> when {
+                (action as? Action.Plus)?.amount == 1 -> listOf(Action.Plus(2))
+                else -> emptyList()
+            } },
+        )
+        component.sendWish(Wish.ActorMultiplus100)
+        scope.async { delay(11.milliseconds) }.await()
+        component.sendWish(Wish.Plus1)
+        scope.async { delay(5.milliseconds) }.await()
+        component.sendWish(Wish.Plus1)
+        scope.async { delay(10.milliseconds) }.await()
+        component.sendWish(Wish.Plus1)
+        component.state.filter { it.value == 207 }.first()
     }
 
     @Test
-    fun componentExecutesOnItsScope() = runTest { scope -> // incl. actor
-        TODO()
-    }
+    fun componentExecutesOnItsScope() = runTest(doMultiScope = false) { scopeWithNamedThread { scope, name ->
+        val wrongThread = AtomicReference(null as String?)
+
+        fun checkDispatcher() {
+            val threadName = Thread.currentThread().name
+            if (!threadName.contains(name)) {
+                wrongThread.set(threadName)
+            }
+        }
+
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = { wish -> checkDispatcher(); wishToAction(wish) },
+            actor = { state, action -> checkDispatcher(); actor(state, action) },
+            reducer = { state, effect -> checkDispatcher(); reducer(state, effect) },
+            postProcessor = { _, _, action, effect ->
+                checkDispatcher()
+                when {
+                    (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(
+                        Action.Plus(200)
+                    )
+
+                    else -> emptyList()
+                }
+            },
+            sideEffectSource = { _, _, action, effect ->
+                checkDispatcher()
+                when {
+                    (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(
+                        SideEffect.SideEffect1
+                    )
+
+                    (action as? Action.Plus)?.amount == 200 && effect is Effect.Plus -> listOf(
+                        SideEffect.SideEffect2
+                    )
+
+                    else -> emptyList()
+                }
+            },
+        )
+        component.sendWish(Wish.Plus200)
+        assertThat(component.sideEffects.take(3).toList())
+            .containsExactly(
+                SideEffect.SideEffect1,
+                SideEffect.SideEffect2,
+                SideEffect.SideEffect2
+            )
+        component.state.filter { it.value == 501 }.first()
+
+        assertThat(wrongThread.get()).isNull()
+    } }
 
     @Test
     fun actorExecutesOnActorDispatcher() = runTest { scope ->
-        TODO()
-    }
-
-    @Test
-    fun parallelActions() = runTest { scope -> // incl. use actorDispatcher to check that the started actions are finished
         TODO()
     }
 
@@ -373,6 +447,7 @@ class MviComponentKtTest {
 
     private fun runTest(
         context: CoroutineContext = EmptyCoroutineContext,
+        doMultiScope: Boolean = true,
         testBody: suspend TestScope.(mviScope: CoroutineScope) -> Unit,
     ) {
         // backgroundScope is single-threaded
@@ -383,12 +458,14 @@ class MviComponentKtTest {
             testBody(backgroundScope)
         }
 
-        // scope is multithreaded
-        kotlinx.coroutines.test.runTest(
-            context = context,
-            timeout = 100.milliseconds,
-        ) {
-            testBody(multithreadedScope)
+        if (doMultiScope) {
+            // scope is multithreaded
+            kotlinx.coroutines.test.runTest(
+                context = context,
+                timeout = 100.milliseconds,
+            ) {
+                testBody(multithreadedScope)
+            }
         }
     }
 
@@ -423,6 +500,7 @@ private sealed interface Action {
     data class DoublePlus(val amount: Int) : Action
     data object Empty : Action
     data object Ineffective : Action
+    data object LongMulti : Action
 }
 
 private sealed interface Effect {
@@ -446,14 +524,32 @@ private fun wishToAction(wish: Wish): List<Action> = when (wish) {
     is Wish.ActorMultiplus100 -> listOf(Action.DoublePlus(50))
 }
 
-private fun actor(state: State, action: Action): Flow<Effect> = when (action) {
+private fun actor(@Suppress("UNUSED_PARAMETER") state: State, action: Action): Flow<Effect> = when (action) {
     is Action.Plus -> flowOf(Effect.Plus(amount = action.amount))
     is Action.DoublePlus -> flowOf(Effect.Plus(amount = action.amount), Effect.Plus(amount = action.amount))
     is Action.Empty -> emptyFlow()
     is Action.Ineffective -> flowOf(Effect.NoEffect)
+    is Action.LongMulti -> flow {
+        for (i in 1..10) {
+            emit(Effect.Plus(10))
+            delay(1.milliseconds)
+        }
+    }
 }
 
 private fun reducer(state: State, effect: Effect): State = when (effect) {
     is Effect.NoEffect -> state
     is Effect.Plus -> state.copy(value = state.value + effect.amount)
+}
+
+private suspend fun scopeWithNamedThread(lambda: suspend (scope: CoroutineScope, name: String) -> Unit) {
+    val name = UUID.randomUUID().toString()
+    newSingleThreadContext(name).use { dispatcher ->
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        try {
+            lambda(scope, name)
+        } finally {
+            scope.coroutineContext.cancel()
+        }
+    }
 }
