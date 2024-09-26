@@ -7,7 +7,7 @@ import net.domisafonov.templateproject.data.settings_store.proto.ProtoSettings
 import net.domisafonov.templateproject.data.settings_store.proto.protoSettings
 import net.domisafonov.templateproject.domain.model.Settings
 import net.domisafonov.templateproject.domain.repository.SettingsRepository
-import net.domisafonov.templateproject.ui.ABOUT_PAGE_URL
+import net.domisafonov.templateproject.ui.DEFAULT_PAGE_URL
 
 class ProtoSettingsRepository(
     private val dataStore: DataStore<ProtoSettings>,
@@ -16,7 +16,7 @@ class ProtoSettingsRepository(
     override fun observeSettings(): Flow<Settings> = dataStore.data
         .map {
             Settings(
-                url = it.url.takeUnless { it.isBlank() } ?: ABOUT_PAGE_URL,
+                url = it.url.takeUnless { it.isBlank() } ?: DEFAULT_PAGE_URL,
             )
         }
 
