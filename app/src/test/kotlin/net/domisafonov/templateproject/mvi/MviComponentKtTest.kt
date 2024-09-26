@@ -338,7 +338,7 @@ class MviComponentKtTest {
     }
 
     @Test
-    fun componentExecutesOnItsScope() = runTest(doMultiScope = false) { scopeWithNamedThread { scope, name ->
+    fun componentExecutesOnItsScope() = runTest(doBackgroundOnly = true) { scopeWithNamedThread { scope, name ->
         val wrongThread = AtomicReference(null as String?)
 
         fun checkDispatcher() {
@@ -462,56 +462,116 @@ class MviComponentKtTest {
         component.sendWish(Wish.Plus200)
         component.state.filter { it.value == 201 }.first()
         errors.close()
-        assertThat(errors.consumeAsFlow().toList().map { it::class }).containsExactly(java.lang.Exception::class)
+        assertThat(errors.consumeAsFlow().toList().map { it::class }).containsExactly(Exception::class)
     }
 
     @Test(expected = UniqueError::class)
-    fun throwErrorFromWishToActionStopByErrorBackground() = runTest(doMultiScope = false) { scope ->
+    fun throwErrorFromWishToActionStopByErrorBackground() = runTest(doBackgroundOnly = true) { scope ->
         val (component, _) = makeWishErrorComponent(scope = scope)
         component.sendWish(Wish.Plus1)
-        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
+        waitForComponentToTerminate(scope)
     }
 
     @Test(expected = UniqueError::class)
-    fun throwErrorFromWishToActionStopByErrorMulti() = runTest(doBackgroundScope = false) { scope ->
+    fun throwErrorFromWishToActionStopByErrorMulti() = runTest(doMultiOnly = true) { scope ->
         val (component, _) = makeWishErrorComponent(scope = scope)
         component.sendWish(Wish.Plus1)
-        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
+        waitForComponentToTerminate(scope)
     }
 
     @Test(expected = UniqueException::class)
-    fun throwErrorFromWishToActionStopByHandlerBackground() = runTest(doMultiScope = false) { scope ->
+    fun throwErrorFromWishToActionStopByHandlerBackground() = runTest(doBackgroundOnly = true) { scope ->
         val (component, _) = makeWishErrorComponent(scope = scope)
         component.sendWish(Wish.Empty)
-        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
+        waitForComponentToTerminate(scope)
     }
 
     @Test(expected = UniqueException::class)
-    fun throwErrorFromWishToActionStopByHandlerMulti() = runTest(doBackgroundScope = false) { scope ->
+    fun throwErrorFromWishToActionStopByHandlerMulti() = runTest(doMultiOnly = true) { scope ->
         val (component, _) = makeWishErrorComponent(scope = scope)
         component.sendWish(Wish.Empty)
-        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
+        waitForComponentToTerminate(scope)
     }
 
-    // also, test the default handler
     @Test
-    fun throwErrorFromActor() = runTest { scope -> // normal, from postprocessor
-        TODO()
+    fun throwErrorFromActorAndContinue() = runTest { scope ->
+        val (component, errors) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus200)
+        component.sendWish(Wish.Plus2)
+        component.sendWish(Wish.Plus300)
+        component.sendWish(Wish.Plus3)
+        component.state.filter { it.value == 9 }.first()
+        errors.close()
+        assertThat(errors.consumeAsFlow().toList().map { it::class })
+            .containsExactly(Exception::class, Exception::class, Exception::class)
     }
 
-    // also, test the default handler
+    @Test(expected = UniqueError::class)
+    fun throwErrorFromActorStopByErrorInsideFlowBackground() = runTest(doBackgroundOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus10)
+        waitForComponentToTerminate(scope)
+    }
+
+    @Test(expected = UniqueError::class)
+    fun throwErrorFromActorStopByErrorInsideFlowMulti() = runTest(doMultiOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus10)
+        waitForComponentToTerminate(scope)
+    }
+
+    @Test(expected = UniqueError::class)
+    fun throwErrorFromActorStopByErrorOutsideFlowBackground() = runTest(doBackgroundOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus201)
+        waitForComponentToTerminate(scope)
+    }
+
+    @Test(expected = UniqueError::class)
+    fun throwErrorFromActorStopByErrorOutsideFlowMulti() = runTest(doMultiOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus201)
+        waitForComponentToTerminate(scope)
+    }
+
+    @Test(expected = UniqueException::class)
+    fun throwErrorFromActorStopByHandlerInsideFlowBackground() = runTest(doBackgroundOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus1)
+        waitForComponentToTerminate(scope)
+    }
+
+    @Test(expected = UniqueException::class)
+    fun throwErrorFromActorStopByHandlerInsideFlowMulti() = runTest(doMultiOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus1)
+        waitForComponentToTerminate(scope)
+    }
+
+    @Test(expected = UniqueException::class)
+    fun throwErrorFromActorStopByHandlerOutsideFlowBackground() = runTest(doBackgroundOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus11)
+        waitForComponentToTerminate(scope)
+    }
+
+    @Test(expected = UniqueException::class)
+    fun throwErrorFromActorStopByHandlerOutsideFlowMulti() = runTest(doMultiOnly = true) { scope ->
+        val (component, _) = makeActorErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus11)
+        waitForComponentToTerminate(scope)
+    }
+
     @Test
     fun throwErrorFromReducer() = runTest { scope ->
         TODO()
     }
 
-    // also, test the default handler
     @Test
     fun throwErrorFromPostProcessor() = runTest { scope ->
         TODO()
     }
 
-    // also, test the default handler
     @Test
     fun throwErrorFromSideEffectProducer() = runTest { scope ->
         TODO()
@@ -549,15 +609,15 @@ class MviComponentKtTest {
 
     private fun runTest(
         context: CoroutineContext = EmptyCoroutineContext,
-        doMultiScope: Boolean = true,
-        doBackgroundScope: Boolean = true,
+        doBackgroundOnly: Boolean = false,
+        doMultiOnly: Boolean = false,
         testBody: suspend TestScope.(mviScope: CoroutineScope) -> Unit,
     ) {
-        if (!doMultiScope && !doBackgroundScope) {
+        if (doMultiOnly && doBackgroundOnly) {
             throw TestImplError()
         }
 
-        if (doBackgroundScope) {
+        if (!doMultiOnly) {
             // backgroundScope is single-threaded
             kotlinx.coroutines.test.runTest(
                 context = context,
@@ -567,7 +627,7 @@ class MviComponentKtTest {
             }
         }
 
-        if (doMultiScope) {
+        if (!doBackgroundOnly) {
             // scope is multithreaded
             kotlinx.coroutines.test.runTest(
                 context = context,
@@ -579,6 +639,13 @@ class MviComponentKtTest {
                     throw it
                 }
             }
+        }
+    }
+
+    private suspend fun waitForComponentToTerminate(scope: CoroutineScope) {
+        // the one remaining job is side effects' shareIn
+        while (scope.coroutineContext.job.children.count() > 1) {
+            yield()
         }
     }
 
@@ -604,8 +671,13 @@ private sealed interface Wish {
     data object Empty : Wish
     data object Ineffective : Wish
     data object Plus1 : Wish
+    data object Plus2 : Wish
+    data object Plus3 : Wish
     data object Plus10 : Wish
+    data object Plus11 : Wish
     data object Plus200 : Wish
+    data object Plus201 : Wish
+    data object Plus300 : Wish
     data object Multiplus100 : Wish
     data object ActorMultiplus100: Wish
 }
@@ -633,8 +705,13 @@ private fun wishToAction(wish: Wish): List<Action> = when (wish) {
     is Wish.Empty -> listOf(Action.Empty)
     is Wish.Ineffective -> listOf(Action.Ineffective)
     is Wish.Plus1 -> listOf(Action.Plus(1))
+    is Wish.Plus2 -> listOf(Action.Plus(2))
+    is Wish.Plus3 -> listOf(Action.Plus(3))
     is Wish.Plus10 -> listOf(Action.Plus(10))
+    is Wish.Plus11 -> listOf(Action.Plus(11))
     is Wish.Plus200 -> listOf(Action.Plus(200))
+    is Wish.Plus201 -> listOf(Action.Plus(201))
+    is Wish.Plus300 -> listOf(Action.Plus(300))
     is Wish.Multiplus100 -> listOf(Action.Plus(50), Action.Plus(50))
     is Wish.ActorMultiplus100 -> listOf(Action.DoublePlus(50))
 }
@@ -659,8 +736,8 @@ private fun reducer(state: State, effect: Effect): State = when (effect) {
 
 private fun makeWishErrorComponent(
     scope: CoroutineScope,
-): Pair<MviComponent<State, Wish, SideEffect>, Channel<Throwable>> {
-    val errors = Channel<Throwable>(Channel.BUFFERED)
+): Pair<MviComponent<State, Wish, SideEffect>, Channel<java.lang.Exception>> {
+    val errors = Channel<java.lang.Exception>(Channel.BUFFERED)
 
     return mviComponent<State, Wish, Action, Effect, SideEffect>(
         scope = scope,
@@ -678,7 +755,39 @@ private fun makeWishErrorComponent(
         errorHandler = { e ->
             errors.trySend(e)
             e !is UniqueException
-        }
+        },
+    ) to errors
+}
+
+private fun makeActorErrorComponent(
+    scope: CoroutineScope,
+): Pair<MviComponent<State, Wish, SideEffect>, Channel<Exception>> {
+    val errors = Channel<java.lang.Exception>(Channel.BUFFERED)
+
+    return mviComponent<State, Wish, Action, Effect, SideEffect>(
+        scope = scope,
+        initialState = State(1),
+        wishToAction = ::wishToAction,
+        actor = { _, action -> when (action) {
+            is Action.Plus -> {
+                when (val amount = action.amount) {
+                    1 -> flow { throw UniqueException() }
+                    10 -> flow { throw UniqueError() }
+                    200 -> flow { throw Exception() }
+                    2 -> throw Exception()
+                    11 -> throw UniqueException()
+                    201 -> throw UniqueError()
+                    300 -> flow { emit(Effect.Plus(5)); throw Exception() }
+                    else -> flowOf(Effect.Plus(amount))
+                }
+            }
+            else -> throw NotImplementedError()
+        } },
+        reducer = ::reducer,
+        errorHandler = { e ->
+            errors.trySend(e)
+            e !is UniqueException
+        },
     ) to errors
 }
 
