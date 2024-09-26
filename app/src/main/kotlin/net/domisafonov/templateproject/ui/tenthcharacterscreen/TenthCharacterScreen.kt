@@ -34,13 +34,22 @@ fun TenthCharacterScreen(
     val pullRefreshState = rememberPullToRefreshState()
     val isRefreshCompleted by viewModel.isRefreshCompleted.collectAsState()
 
+    if (!doCompactView) {
+        if (pullRefreshState.isRefreshing) {
+            viewModel.setRefreshing(true)
+        }
+
+        if (isRefreshCompleted) {
+            pullRefreshState.endRefresh()
+            viewModel.setRefreshing(false)
+        }
+    }
+
     TenthCharacterScreenUi(
         doCompactView = doCompactView,
         text = text,
         modifier = modifier,
         pullRefreshState = pullRefreshState,
-        isRefreshCompleted = isRefreshCompleted,
-        setRefreshing = { viewModel.setRefreshing(it) },
     )
 }
 
@@ -50,8 +59,6 @@ private fun TenthCharacterScreenUi(
     text: String,
     modifier: Modifier = Modifier,
     pullRefreshState: PullToRefreshState = rememberPullToRefreshState(),
-    isRefreshCompleted: Boolean = false,
-    setRefreshing: (isRefreshing: Boolean) -> Unit = {},
 ) {
     if (doCompactView) {
         Text(
@@ -60,15 +67,6 @@ private fun TenthCharacterScreenUi(
             overflow = TextOverflow.Ellipsis,
         )
     } else {
-        if (pullRefreshState.isRefreshing) {
-            setRefreshing(true)
-        }
-
-        if (isRefreshCompleted) {
-            pullRefreshState.endRefresh()
-            setRefreshing(false)
-        }
-
         Box(
             modifier = Modifier
                 .nestedScroll(connection = pullRefreshState.nestedScrollConnection)

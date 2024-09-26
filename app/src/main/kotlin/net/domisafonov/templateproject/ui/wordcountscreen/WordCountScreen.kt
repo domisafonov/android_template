@@ -34,13 +34,20 @@ fun WordCountScreen(
     val pullRefreshState = rememberPullToRefreshState()
     val isRefreshCompleted by viewModel.isRefreshCompleted.collectAsState()
 
+    if (pullRefreshState.isRefreshing) {
+        viewModel.setRefreshing(true)
+    }
+
+    if (isRefreshCompleted) {
+        pullRefreshState.endRefresh()
+        viewModel.setRefreshing(false)
+    }
+
     WordCountScreenUi(
         doCompactView = doCompactView,
         lines = lines,
         modifier = modifier,
         pullRefreshState = pullRefreshState,
-        isRefreshCompleted = isRefreshCompleted,
-        setRefreshing = { viewModel.setRefreshing(it) },
     )
 }
 
@@ -50,18 +57,7 @@ private fun WordCountScreenUi(
     lines: List<String>,
     modifier: Modifier = Modifier,
     pullRefreshState: PullToRefreshState = rememberPullToRefreshState(),
-    isRefreshCompleted: Boolean = false,
-    setRefreshing: (isRefreshing: Boolean) -> Unit = {},
 ) {
-    if (pullRefreshState.isRefreshing) {
-        setRefreshing(true)
-    }
-
-    if (isRefreshCompleted) {
-        pullRefreshState.endRefresh()
-        setRefreshing(false)
-    }
-
     if (doCompactView) {
         val size = lines.size.coerceAtMost(COMPACT_VIEW_LINES_LIMIT)
         LazyColumn(modifier = modifier.fillMaxSize()) {
@@ -69,7 +65,7 @@ private fun WordCountScreenUi(
                 Text(text = lines[i])
             }
             if (lines.size > COMPACT_VIEW_LINES_LIMIT) {
-                item() { Text(text = "...") }
+                item { Text(text = "...") }
             }
         }
     } else {
