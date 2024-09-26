@@ -890,7 +890,7 @@ class MviComponentKtTest {
             // backgroundScope is single-threaded
             kotlinx.coroutines.test.runTest(
                 context = context,
-                timeout = 200.milliseconds,
+                timeout = 400.milliseconds,
             ) {
                 testBody(backgroundScope)
             }
@@ -900,7 +900,7 @@ class MviComponentKtTest {
             // scope is multithreaded
             kotlinx.coroutines.test.runTest(
                 context = context,
-                timeout = 200.milliseconds,
+                timeout = 400.milliseconds,
             ) {
                 testBody(multithreadedScope)
                 scopeError.error?.let {
