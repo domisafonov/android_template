@@ -28,6 +28,13 @@ fun TopBar(appState: AppState) {
 
     val state by appState.navController.currentBackStackEntryFlow
         .map {
+            if (it.destination.navigatorName == "dialog") {
+                appState.navController.previousBackStackEntry ?: it
+            } else {
+                it
+            }
+        }
+        .map {
             TopBarState(
                 title = it.destination.label?.toString() ?: defaultLabel,
                 hasBackButton = it.destination.route != MAIN_NAV_ID,
