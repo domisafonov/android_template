@@ -20,21 +20,6 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 
 class MviComponentKtTest {
-
-    private lateinit var multithreadedScope: CoroutineScope
-
-    @Before
-    fun initScope() {
-        multithreadedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    }
-
-    @After
-    fun closeScope() {
-        multithreadedScope.cancel()
-    }
-
-    // FIXME: use actorDispatcher to check that the started actions are finished
-
     @Test
     fun simpleEndToEnd() = runTest { scope ->
         val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
@@ -80,18 +65,155 @@ class MviComponentKtTest {
         component.state.filter { it.value == 501 }.first()
     }
 
-    // 1. end to end state is emitted, changed, a side effect is triggered
-    // 2. each specific callback is getting called
-    // 3. empty values at each place
-    // 4. multiple values at each place
-    // 5. ongoing action
-    // 6. parallel actions (emitting periodically)
-    // 7. recursion with postProcessor, should also test that no action is getting lost
-    // 8. the limits
-    // 9. errors thrown in each callback
-    // 10. empty values from callbacks do not trigger other callbacks
-    // 11. the subscriber count thing
-    // 12. all arguments in each callback
+    @Test
+    fun wishToActionIsCalled() = runTest { scope -> // bootstrapper, send
+        TODO()
+    }
+
+    @Test
+    fun actorIsCalled() = runTest { scope -> // normal, from postprocessor
+        TODO()
+    }
+
+    @Test
+    fun reducerIsCalled() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun postProcessorIsCalled() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun sideEffectProducerIsCalled() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun returnEmptyFromWishToAction() = runTest { scope -> // bootstrapper, send
+        TODO()
+    }
+
+    @Test
+    fun returnEmptyFromActor() = runTest { scope -> // normal, from postprocessor
+        TODO()
+    }
+
+    @Test
+    fun returnUnchangedFromReducer() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun returnEmptyFromPostProcessor() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun returnEmptyFromSideEffectProducer() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun returnMultipleFromWishToAction() = runTest { scope -> // bootstrapper, send
+        TODO()
+    }
+
+    @Test
+    fun returnMultipleFromActor() = runTest { scope -> // normal, from postprocessor
+        TODO()
+    }
+
+    @Test
+    fun returnMultipleFromPostProcessor() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun returnMultipleFromSideEffectProducer() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun actionProducesValuesOverTime() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun componentExecutesOnItsScope() = runTest { scope -> // incl. actor
+        TODO()
+    }
+
+    @Test
+    fun actorExecutesOnActorDispatcher() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun parallelActions() = runTest { scope -> // incl. use actorDispatcher to check that the started actions are finished
+        TODO()
+    }
+
+    @Test
+    fun postProcessorRecursion() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun limits() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun throwErrorFromWishToAction() = runTest { scope -> // bootstrapper, send
+        TODO()
+    }
+
+    @Test
+    fun throwErrorFromActor() = runTest { scope -> // normal, from postprocessor
+        TODO()
+    }
+
+    @Test
+    fun throwErrorFromReducer() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun throwErrorFromPostProcessor() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun throwErrorFromSideEffectProducer() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun sideEffectWithNoSubscribersSavesValues() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun sideEffectWithNoSubscribersDoesNotSaveValues() = runTest { scope ->
+        TODO() // incl. save values on start, but not after reaching 0 subs later
+    }
+
+    @Test
+    fun actorGetsConsistentState() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun postProcessorGetsConsistentOldNewState() = runTest { scope ->
+        TODO()
+    }
+
+    @Test
+    fun sideEffectProducerGetsConsistentOldNewState() = runTest { scope ->
+        TODO()
+    }
 
     private fun runTest(
         context: CoroutineContext = EmptyCoroutineContext,
@@ -112,6 +234,18 @@ class MviComponentKtTest {
         ) {
             testBody(multithreadedScope)
         }
+    }
+
+    private lateinit var multithreadedScope: CoroutineScope
+
+    @Before
+    fun initScope() {
+        multithreadedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    }
+
+    @After
+    fun closeScope() {
+        multithreadedScope.cancel()
     }
 }
 
