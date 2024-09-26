@@ -6,4 +6,5 @@
     <string name="word_count_screen_label">Word Count</string>
 
     <string name="back_button_description">Back</string>
+    <string name="url_description">URL</string>
 </resources>

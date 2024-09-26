@@ -12,6 +12,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,7 +34,8 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     onTenthClick: () -> Unit,
     onWordCountClick: () -> Unit,
-    appBarController: AppBarController<MainScreenAppBarState, Unit>,
+    onUrlButtonClick: () -> Unit,
+    appBarController: AppBarController<MainScreenAppBarState, MainScreenAppBarEvent>,
 ) {
     val viewModel: MainScreenViewModel = hiltViewModel()
     val isActivated by viewModel.isActivated.collectAsState()
@@ -47,6 +49,13 @@ fun MainScreen(
         )
     } else {
         appBarController.setState(MainScreenAppBarState(isActivated = false))
+
+        LaunchedEffect(appBarController) {
+            appBarController.events.collect { event -> when (event) {
+                is MainScreenAppBarEvent.UrlButtonClick -> onUrlButtonClick()
+            } }
+        }
+
         NonActivatedUi(
             modifier = modifier,
             onButtonClick = { viewModel.onButtonClick() },

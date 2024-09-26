@@ -21,6 +21,7 @@ import net.domisafonov.templateproject.R
 import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreen
 import net.domisafonov.templateproject.ui.mainscreen.MainScreen
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBar
+import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarEvent
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarState
 import net.domisafonov.templateproject.ui.topbar.AppBarController
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
@@ -42,7 +43,7 @@ fun NavHost(
         startDestination = MAIN_NAV_ID,
         modifier = modifier,
     ) {
-        composable<MainScreenAppBarState, Unit>(
+        composable<MainScreenAppBarState, MainScreenAppBarEvent>(
             appState = appState,
             route = MAIN_NAV_ID,
             appBar = { state, events -> MainScreenAppBar(state, events) },
@@ -51,6 +52,7 @@ fun NavHost(
             MainScreen(
                 onTenthClick = { appState.navController.navigate("details/tenchcharacter") },
                 onWordCountClick = { appState.navController.navigate("details/wordcount") },
+                onUrlButtonClick = { TODO() },
                 appBarController = controller,
             )
         }
