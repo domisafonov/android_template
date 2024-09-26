@@ -585,19 +585,71 @@ class MviComponentKtTest {
         waitForComponentToTerminate(scope)
     }
 
-    @Test
+    @Test(expected = UniqueException::class)
     fun throwErrorFromReducer() = runTest { scope ->
-        TODO()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(1)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = { state: State, effect: Effect -> when {
+                effect is Effect.Plus && effect.amount == 1 -> throw Exception()
+                effect is Effect.Plus && effect.amount == 2 -> state.copy(value = state.value + effect.amount)
+                else -> throw UniqueException()
+            } },
+            errorHandler = { e -> e !is UniqueException },
+        )
+        component.sendWish(Wish.Plus2)
+        component.state.filter { it.value == 3 }.first()
+        component.sendWish(Wish.Plus3)
+        waitForComponentToTerminate(scope)
     }
 
-    @Test
+    @Test(expected = UniqueException::class)
     fun throwErrorFromPostProcessor() = runTest { scope ->
-        TODO()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(1)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, _, effect -> when {
+                effect is Effect.Plus && effect.amount == 1 -> throw Exception()
+                effect is Effect.Plus && effect.amount == 2 -> listOf(Action.Plus(3))
+                effect is Effect.Plus && effect.amount == 10 -> throw UniqueException()
+                else -> emptyList()
+            } },
+            errorHandler = { e -> e !is UniqueException },
+        )
+        component.sendWish(Wish.Plus2)
+        component.state.filter { it.value == 7 }.first()
+        component.sendWish(Wish.Plus10)
+        waitForComponentToTerminate(scope)
     }
 
-    @Test
+    @Test(expected = UniqueException::class)
     fun throwErrorFromSideEffectProducer() = runTest { scope ->
-        TODO()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(1)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            sideEffectSource = { oldState, newState, action, effect -> when {
+                effect is Effect.Plus && effect.amount == 1 -> throw Exception()
+                effect is Effect.Plus && effect.amount == 2 -> listOf(SideEffect.SideEffect1)
+                effect is Effect.Plus && effect.amount == 3 -> throw UniqueException()
+                else -> emptyList()
+            } },
+            errorHandler = { e -> e !is UniqueException },
+        )
+        component.sendWish(Wish.Plus2)
+        assertThat(component.sideEffects.first()).isEqualTo(SideEffect.SideEffect1)
+        component.sendWish(Wish.Plus3)
+        waitForComponentToTerminate(scope)
     }
 
     @Test
