@@ -33,27 +33,40 @@ fun MainScreen(
     appBarController: AppBarController<MainScreenAppBarState, MainScreenAppBarEvent>,
 ) {
     val viewModel: MainScreenViewModel = hiltViewModel()
-    val isActivated by viewModel.isActivated.collectAsState()
+    val state by viewModel.state.collectAsState()
 
-    if (isActivated) {
+    LaunchedEffect(Unit) {
+        viewModel.commands.collect { when (it) {
+            is MainScreenMvi.Command.UrlNotEditedMessage -> TODO()
+        } }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.navigation.collect { when (it) {
+            is MainScreenMvi.Navigation.GoToTenth -> coordinator.openTenthCharacter()
+            is MainScreenMvi.Navigation.GoToWordCount -> coordinator.openWordCount()
+            is MainScreenMvi.Navigation.GoToUrlEditor -> coordinator.openUrlEditor()
+        } }
+    }
+
+    if (state.isActivated) {
         appBarController.setState(MainScreenAppBarState(isActivated = true))
         ActivatedUi(
             modifier = modifier,
-            onTenthClick = coordinator::openTenthCharacter,
-            onWordCountClick = coordinator::openWordCount,
+            onTenthClick = viewModel::onTenthClick,
+            onWordCountClick = viewModel::onWordCountClick,
         )
     } else {
         appBarController.setState(MainScreenAppBarState(isActivated = false))
 
         LaunchedEffect(appBarController) {
             appBarController.events.collect { event -> when (event) {
-                is MainScreenAppBarEvent.UrlButtonClick -> coordinator.openUrlEditor()
+                is MainScreenAppBarEvent.UrlButtonClick -> viewModel.onUrlButtonClick()
             } }
         }
 
         NonActivatedUi(
             modifier = modifier,
-            onButtonClick = viewModel::onButtonClick,
+            onButtonClick = viewModel::onGoButtonClick,
         )
     }
 }

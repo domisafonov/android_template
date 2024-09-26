@@ -58,7 +58,8 @@ typealias SideEffectPublisher<State, Action, Effect, SideEffect> = (
     effect: Effect,
 ) -> List<SideEffect>
 
-fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> CoroutineScope.mviComponent(
+fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviComponent(
+    scope: CoroutineScope,
     initialState: State,
     bootstrapper: List<Action> = emptyList(),
     wishToAction: (wish: Wish) -> List<Action>,
@@ -66,7 +67,7 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> Coro
     reducer: (state: State, effect: Effect) -> State,
     postProcessor: PostProcessor<State, Action, Effect> = { _, _, _, _ -> emptyList() },
     sideEffectSource: SideEffectPublisher<State, Action, Effect, SideEffect> = { _, _, _, _ -> emptyList() },
-    areSideEffectsSavedWithNoSubscribers: Boolean = true,
+    areSideEffectsSavedWithNoSubscribers: Boolean = false,
     wishCapacity: Int = DEFAULT_WISH_CAPACITY,
     actionConcurrencyLimit: Int = DEFAULT_ACTION_CONCURRENCY_LIMIT,
     sideEffectBufferCapacity: Int = DEFAULT_SIDE_EFFECT_BUFFER_CAPACITY,
@@ -94,7 +95,7 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> Coro
     val component = object : MviComponent<State, Wish, SideEffect>, SendChannel<Wish> by input {
         private val _sideEffects: SharedFlow<SideEffect> = sideEffects.receiveAsFlow()
             .shareIn(
-                scope = this@mviComponent,
+                scope = scope,
                 started = if (areSideEffectsSavedWithNoSubscribers) {
                     SharingStarted.Eagerly
                 } else {
@@ -108,7 +109,7 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> Coro
         override val sideEffects: SharedFlow<SideEffect> = _sideEffects
     }
 
-    launch {
+    scope.launch {
         val inducedActions = Channel<Action>(Channel.UNLIMITED)
 
         val allActions = merge(
