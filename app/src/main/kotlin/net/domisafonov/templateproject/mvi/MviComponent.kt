@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flattenConcat
 import kotlinx.coroutines.flow.flattenMerge
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.domisafonov.templateproject.BuildConfig
+import net.domisafonov.templateproject.util.flowOfNotNull
 import timber.log.Timber
 
 private const val DEFAULT_WISH_CAPACITY = 64
@@ -93,7 +95,7 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
 
     val state = MutableStateFlow(initialState)
 
-    val sideEffects = Channel<SideEffect>()
+    val sideEffects = Channel<SideEffect>(Channel.UNLIMITED)
 
     val component = object : MviComponent<State, Wish, SideEffect>, SendChannel<Wish> by input {
         private val _sideEffects: SharedFlow<SideEffect> = sideEffects.receiveAsFlow()
@@ -158,15 +160,21 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
     return component
 }
 
-private val ResettingReplayCacheOnZeroImpl = SharingStarted { subscriptionCount ->
-    subscriptionCount.flatMapConcat { count ->
+private val ResettingReplayCacheOnZeroImpl = SharingStarted { subscriptionCount -> flow {
+    emit(SharingCommand.START)
+    var isFirst = true
+
+    subscriptionCount.collect { count ->
+        if (isFirst) {
+            isFirst = false
+            return@collect
+        }
         if (count == 0) {
-            flowOf(SharingCommand.STOP_AND_RESET_REPLAY_CACHE, SharingCommand.START)
-        } else {
-            emptyFlow()
+            emit(SharingCommand.STOP_AND_RESET_REPLAY_CACHE)
+            emit(SharingCommand.START)
         }
     }
-}
+} }
 
 private val SharingStarted.Companion.ResettingReplayCacheOnZero get() = ResettingReplayCacheOnZeroImpl
 

@@ -1,20 +1,16 @@
-@file:OptIn(FlowPreview::class)
-
 package net.domisafonov.templateproject.mvi
 
-import androidx.compose.animation.scaleIn
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.TestResult
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestScope
 import org.junit.After
 import org.junit.Before
@@ -25,24 +21,24 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class MviComponentKtTest {
 
-    private lateinit var scope: CoroutineScope
+    private lateinit var multithreadedScope: CoroutineScope
 
     @Before
     fun initScope() {
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        multithreadedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }
 
     @After
     fun closeScope() {
-        scope.cancel()
+        multithreadedScope.cancel()
     }
 
     // FIXME: use actorDispatcher to check that the started actions are finished
 
     @Test
-    fun simpleEndToEnd() = runTest {
+    fun simpleEndToEnd() = runTest { scope ->
         val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
-            scope = backgroundScope,
+            scope = scope,
             initialState = State(1),
             bootstrapper = listOf(Action.Plus(100)),
             wishToAction = ::wishToAction,
@@ -50,17 +46,38 @@ class MviComponentKtTest {
             reducer = ::reducer,
             postProcessor = { _, _, action, effect -> when {
                 (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(1000))
+                (action as? Action.Plus)?.amount == 1000 && effect is Effect.Plus -> listOf(Action.Plus(10000))
                 else -> emptyList()
             } },
         )
-
         component.sendWish(Wish.WishPlus1)
-        component.state.filter { it.value == 1102 }.first()
+        component.state.filter { it.value == 11102 }.first()
     }
 
     @Test
-    fun simpleEndToEndSideEffects() = runTest {
-        TODO()
+    fun simpleEndToEndSideEffects() = runTest { scope ->
+        val component = mviComponent(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(200))
+                else -> emptyList()
+            } },
+            sideEffectSource = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(SideEffect.SideEffect1)
+                (action as? Action.Plus)?.amount == 200 && effect is Effect.Plus -> listOf(SideEffect.SideEffect2)
+                else -> emptyList()
+            } },
+        )
+        component.sendWish(Wish.WishPlus200)
+        testScheduler.advanceUntilIdle()
+        assertThat(component.sideEffects.take(3).toList())
+            .containsExactly(SideEffect.SideEffect1, SideEffect.SideEffect2, SideEffect.SideEffect2)
+        component.state.filter { it.value == 501 }.first()
     }
 
     // 1. end to end state is emitted, changed, a side effect is triggered
@@ -93,7 +110,7 @@ class MviComponentKtTest {
             context = context,
             timeout = 100.milliseconds,
         ) {
-            testBody(scope)
+            testBody(multithreadedScope)
         }
     }
 }
@@ -104,6 +121,7 @@ private sealed interface Wish {
     data object WishNothing : Wish
     data object WishPlus1 : Wish
     data object WishPlus10 : Wish
+    data object WishPlus200 : Wish
 }
 
 private sealed interface Action {
@@ -117,12 +135,14 @@ private sealed interface Effect {
 
 private sealed interface SideEffect {
     data object SideEffect1 : SideEffect
+    data object SideEffect2 : SideEffect
 }
 
 private fun wishToAction(wish: Wish): List<Action> = when (wish) {
     Wish.WishNothing -> emptyList()
     Wish.WishPlus1 -> listOf(Action.Plus(1))
     Wish.WishPlus10 -> listOf(Action.Plus(10))
+    Wish.WishPlus200 -> listOf(Action.Plus(200))
 }
 
 private fun actor(state: State, action: Action): Flow<Effect> = when (action) {
