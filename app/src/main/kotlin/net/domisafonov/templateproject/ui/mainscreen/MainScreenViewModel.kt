@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import net.domisafonov.templateproject.mvi.sendWish
 import javax.inject.Inject
 
@@ -22,7 +25,18 @@ class MainScreenViewModel @Inject constructor(
         actor = actor,
     )
 
-    val state: StateFlow<MainScreenMvi.State> = mvi.state // TODO: to viewstate
+    val state: StateFlow<MainScreenViewState> = mvi.state
+        .map {
+            MainScreenViewState(
+                isActivated = it.isActivated,
+            )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = MainScreenViewState(isActivated = false),
+        )
+
     val commands: Flow<MainScreenMvi.Command> = mvi.sideEffects.filterIsInstance()
     val navigation: Flow<MainScreenMvi.Navigation> = mvi.sideEffects.filterIsInstance()
 

@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,8 +24,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.flowWithLifecycle
 import net.domisafonov.templateproject.R
 import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreen
 import net.domisafonov.templateproject.ui.topbar.AppBarController
@@ -168,6 +167,11 @@ private fun NonActivatedUi(
         }
     }
 }
+
+@Immutable
+data class MainScreenViewState(
+    val isActivated: Boolean,
+)
 
 @Preview(showBackground = true)
 @Composable
