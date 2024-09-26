@@ -207,7 +207,7 @@ class MviComponentKtTest {
     }
 
     @Test
-    fun returnEmptyFromActor() = runTest { scope -> // normal, from postprocessor
+    fun returnEmptyFromActor() = runTest { scope ->
         val callCount = AtomicInteger(0)
         val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
             scope = scope,
@@ -313,6 +313,7 @@ class MviComponentKtTest {
         component.state.filter { it.value == 101 }.first()
     }
 
+    // FIXME: also, test that it actually runs in parallel
     @Test
     fun parallelActions() = runTest { scope ->
         val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
