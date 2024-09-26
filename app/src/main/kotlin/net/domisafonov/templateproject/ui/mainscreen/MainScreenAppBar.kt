@@ -4,20 +4,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 
 @Composable
 fun MainScreenAppBar(
-    state: Flow<MainScreenAppBarState>,
+    state: State<MainScreenAppBarState?>,
     events: SendChannel<Unit>,
 ) {
-    val state = state.collectAsState(initial = null).value ?: return
+    val state = state.value ?: return
 
     // TODO
     if (state.isActivated) {
@@ -36,7 +36,7 @@ data class MainScreenAppBarState(
 @Composable
 fun MainScreenAppBarPreview() {
     MainScreenAppBar(
-        state = flowOf(MainScreenAppBarState(isActivated = true)),
+        state = remember { mutableStateOf(MainScreenAppBarState(isActivated = true)) },
         events = Channel(),
     )
 }

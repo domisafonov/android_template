@@ -23,11 +23,11 @@ class AppState(
 
 @Composable
 fun ComposeApp(
+    modifier: Modifier = Modifier,
     appState: AppState = AppState(
         navController = rememberNavController(),
         appBarActions = mutableStateOf(null),
     ),
-    modifier: Modifier = Modifier,
 ) {
     val appState = remember { appState }
 
