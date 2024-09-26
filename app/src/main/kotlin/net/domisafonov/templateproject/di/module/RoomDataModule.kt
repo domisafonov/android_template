@@ -26,5 +26,6 @@ object RoomDataModule {
             klass = PageCacheDb::class.java,
             name = File(context.cacheDir, PAGE_CACHE_DB_NAME).absolutePath,
         )
+        .fallbackToDestructiveMigration()
         .build()
 }

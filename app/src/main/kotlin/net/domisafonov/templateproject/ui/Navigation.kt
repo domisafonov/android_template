@@ -6,8 +6,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDeepLink
@@ -26,7 +24,7 @@ import net.domisafonov.templateproject.ui.mainscreen.MainScreen
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBar
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarEvent
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarState
-import net.domisafonov.templateproject.ui.mainscreen.UrlDialog
+import net.domisafonov.templateproject.ui.mainscreen.urldialog.UrlDialog
 import net.domisafonov.templateproject.ui.topbar.AppBarController
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
 import timber.log.Timber
@@ -60,7 +58,7 @@ fun NavHost(
                 appBarController = controller,
             )
         }
-        dialog(route = "main/url_dialog") { UrlDialog() }
+        dialog(route = "main/url_dialog") { UrlDialog(onDismiss = { appState.navController.popBackStack() }) }
 
         composable(appState = appState, route = "details/tenth_character", label = tenthLabel) { TenthCharacterScreen() }
         composable(appState = appState, route = "details/word_count", label = wordCountLabel) { WordCountScreen() }

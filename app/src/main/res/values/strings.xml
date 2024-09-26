@@ -5,6 +5,11 @@
     <string name="tenth_screen_label">Tenth</string>
     <string name="word_count_screen_label">Word Count</string>
 
+    <string name="dialog_save">Save</string>
+    <string name="dialog_cancel">Cancel</string>
+
     <string name="back_button_description">Back</string>
     <string name="url_description">URL</string>
+
+    <string name="url_dialog_title">Page URL</string>
 </resources>

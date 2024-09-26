@@ -58,7 +58,7 @@ fun MainScreen(
 
         NonActivatedUi(
             modifier = modifier,
-            onButtonClick = { viewModel.onButtonClick() },
+            onButtonClick = viewModel::onButtonClick,
         )
     }
 }
@@ -79,7 +79,7 @@ private fun ActivatedUi(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clickable { onTenthClick() }
+                .clickable(onClick = onTenthClick)
         ) {
             Column(
                 modifier = Modifier
@@ -109,7 +109,7 @@ private fun ActivatedUi(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clickable { onWordCountClick() },
+                .clickable(onClick = onWordCountClick),
         ) {
             Column(
                 modifier = Modifier

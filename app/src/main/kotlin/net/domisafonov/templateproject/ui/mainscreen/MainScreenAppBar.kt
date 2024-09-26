@@ -47,7 +47,7 @@ sealed interface MainScreenAppBarEvent {
 @Composable
 fun MainScreenAppBarPreview() {
     MainScreenAppBar(
-        state = remember { mutableStateOf(MainScreenAppBarState(isActivated = true)) },
+        state = remember { mutableStateOf(MainScreenAppBarState(isActivated = false)) },
         events = Channel(),
     )
 }
