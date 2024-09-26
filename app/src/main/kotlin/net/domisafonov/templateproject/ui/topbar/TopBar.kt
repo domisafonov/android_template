@@ -81,13 +81,13 @@ private fun TopBarUi(
 
 @Preview
 @Composable
-fun TopBarUiPreviewWithBack() {
+private fun TopBarUiPreviewWithBack() {
     TopBarUi(state = TopBarState("Title", hasBackButton = false, actions = {}))
 }
 
 @Preview
 @Composable
-fun TopBarUiPreviewWithoutBack() {
+private fun TopBarUiPreviewWithoutBack() {
     TopBarUi(state = TopBarState("Title", hasBackButton = true, actions = {}))
 }
 

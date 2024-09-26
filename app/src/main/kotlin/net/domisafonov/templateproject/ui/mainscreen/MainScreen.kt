@@ -17,17 +17,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import net.domisafonov.templateproject.R
 import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreen
-import net.domisafonov.templateproject.ui.tenthcharacterscreen.TenthCharacterScreenUiCompactPreview
 import net.domisafonov.templateproject.ui.topbar.AppBarController
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
-import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreenUiCompactPreview
 
 @Composable
 fun MainScreen(
@@ -93,15 +90,11 @@ private fun ActivatedUi(
                     style = MaterialTheme.typography.headlineSmall,
                 )
 
-                if (LocalInspectionMode.current) {
-                    TenthCharacterScreenUiCompactPreview(modifier = Modifier.fillMaxSize())
-                } else {
-                    TenthCharacterScreen(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        doCompactView = true,
-                    )
-                }
+                TenthCharacterScreen(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    doCompactView = true,
+                )
             }
         }
 
@@ -123,15 +116,11 @@ private fun ActivatedUi(
                     style = MaterialTheme.typography.headlineSmall,
                 )
 
-                if (LocalInspectionMode.current) {
-                    WordCountScreenUiCompactPreview(modifier = Modifier.fillMaxSize())
-                } else {
-                    WordCountScreen(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        doCompactView = true,
-                    )
-                }
+                WordCountScreen(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    doCompactView = true,
+                )
             }
         }
     }
@@ -154,12 +143,12 @@ private fun NonActivatedUi(
 
 @Preview(showBackground = true)
 @Composable
-fun ActivatedUiPreview() {
+private fun ActivatedUiPreview() {
     ActivatedUi()
 }
 
 @Preview(showBackground = true)
 @Composable
-fun NonActivatedUiPreview() {
+private fun NonActivatedUiPreview() {
     NonActivatedUi()
 }

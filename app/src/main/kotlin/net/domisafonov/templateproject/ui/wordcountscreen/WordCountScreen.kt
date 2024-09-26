@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.flow.map
@@ -26,6 +27,14 @@ fun WordCountScreen(
     modifier: Modifier = Modifier,
     doCompactView: Boolean = false,
 ) {
+    if (LocalInspectionMode.current) {
+        if (doCompactView) {
+            WordCountScreenUiCompactPreview(modifier = modifier)
+        } else {
+            WordCountScreenUiFullPreview(modifier = modifier)
+        }
+        return
+    }
 
     val viewModel: WordCountScreenViewModel = hiltViewModel()
 
@@ -89,7 +98,7 @@ private fun WordCountScreenUi(
 
 @Preview(showBackground = true)
 @Composable
-fun WordCountScreenUiCompactPreview(modifier: Modifier = Modifier) {
+private fun WordCountScreenUiCompactPreview(modifier: Modifier = Modifier) {
     WordCountScreenUi(
         doCompactView = true,
         lines = (1..100).map { "\"$it\": $it" },
@@ -99,7 +108,7 @@ fun WordCountScreenUiCompactPreview(modifier: Modifier = Modifier) {
 
 @Preview(showBackground = true)
 @Composable
-fun WordCountScreenUiFullPreview(modifier: Modifier = Modifier) {
+private fun WordCountScreenUiFullPreview(modifier: Modifier = Modifier) {
     WordCountScreenUi(
         doCompactView = false,
         lines = (1..100).map { "\"$it\": $it" },

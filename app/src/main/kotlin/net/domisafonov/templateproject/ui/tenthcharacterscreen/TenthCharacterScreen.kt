@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,6 +29,15 @@ fun TenthCharacterScreen(
     modifier: Modifier = Modifier,
     doCompactView: Boolean = false,
 ) {
+    if (LocalInspectionMode.current) {
+        if (doCompactView) {
+            TenthCharacterScreenUiCompactPreview(modifier = modifier)
+        } else {
+            TenthCharacterScreenUiFullPreview(modifier = modifier)
+        }
+        return
+    }
+
     val viewModel: TenthCharacterScreenViewModel = hiltViewModel()
 
     val text by viewModel.text.map { it.orEmpty() }.collectAsState(initial = "")
@@ -86,7 +96,7 @@ private fun TenthCharacterScreenUi(
 
 @Preview(showBackground = true)
 @Composable
-fun TenthCharacterScreenUiCompactPreview(modifier: Modifier = Modifier) {
+private fun TenthCharacterScreenUiCompactPreview(modifier: Modifier = Modifier) {
     TenthCharacterScreenUi(
         doCompactView = true,
         text = "The Tenth Text",
@@ -96,9 +106,10 @@ fun TenthCharacterScreenUiCompactPreview(modifier: Modifier = Modifier) {
 
 @Preview(showBackground = true)
 @Composable
-fun TenthCharacterScreenUiFullPreview() {
+private fun TenthCharacterScreenUiFullPreview(modifier: Modifier = Modifier) {
     TenthCharacterScreenUi(
         doCompactView = false,
         text = "The Tenth Text",
+        modifier = modifier,
     )
 }

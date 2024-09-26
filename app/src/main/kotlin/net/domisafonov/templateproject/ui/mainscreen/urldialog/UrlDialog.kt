@@ -95,12 +95,12 @@ fun UrlDialogUi(
 
 @Preview(showBackground = true)
 @Composable
-fun UrlDialogUiNormalPreview() {
+private fun UrlDialogUiNormalPreview() {
     UrlDialogUi(text = "/about/", error = null)
 }
 
 @Preview(showBackground = true)
 @Composable
-fun UrlDialogUiErrorPreview() {
+private fun UrlDialogUiErrorPreview() {
     UrlDialogUi(text = "/about/", error = stringResource(id = R.string.invalid_url_error))
 }
