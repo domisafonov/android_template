@@ -20,8 +20,6 @@ import java.util.WeakHashMap
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
-// TODO: to cache arbitrary amount (not a fixed set) of pages if necessary,
-//  please implement and call a cache clearing procedure
 class RoomPageRepository(
     private val pageCacheDao: PageCacheDao,
     private val pageApi: PageApi,

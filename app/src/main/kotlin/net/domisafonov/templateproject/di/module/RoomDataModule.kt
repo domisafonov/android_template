@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import net.domisafonov.templateproject.data.pagecache.PAGE_CACHE_DB_NAME
 import net.domisafonov.templateproject.data.pagecache.PageCacheDb
+import java.io.File
 import javax.inject.Singleton
 
 @Module
@@ -23,7 +24,7 @@ object RoomDataModule {
         .databaseBuilder(
             context = context,
             klass = PageCacheDb::class.java,
-            name = PAGE_CACHE_DB_NAME,
+            name = File(context.cacheDir, PAGE_CACHE_DB_NAME).absolutePath,
         )
         .build()
 }
