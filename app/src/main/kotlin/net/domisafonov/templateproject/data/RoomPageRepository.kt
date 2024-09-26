@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import net.domisafonov.templateproject.data.pageapi.PageApi
 import net.domisafonov.templateproject.data.pagecache.PageCacheDao
-import net.domisafonov.templateproject.data.pagecache.RoomPage
-import net.domisafonov.templateproject.data.pagecache.toPage
+import net.domisafonov.templateproject.data.pagecache.entity.RoomPage
+import net.domisafonov.templateproject.data.pagecache.entity.toPage
 import net.domisafonov.templateproject.domain.model.Page
 import net.domisafonov.templateproject.domain.repository.PageRepository
 import timber.log.Timber

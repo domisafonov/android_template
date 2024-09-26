@@ -29,8 +29,7 @@ fun TopBar(appState: AppState) {
             )
         }
         .collectAsState(
-            initial =
-            TopBarState(
+            initial = TopBarState(
                 title = defaultLabel,
                 hasBackButton = false,
             )

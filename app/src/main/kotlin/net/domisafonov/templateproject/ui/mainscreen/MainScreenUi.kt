@@ -64,7 +64,7 @@ private fun ActivatedUi(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clickable() { onTenthClick() }
+                .clickable { onTenthClick() }
         ) {
             Column(
                 modifier = Modifier

@@ -1,4 +1,4 @@
-package net.domisafonov.templateproject.data.pagecache
+package net.domisafonov.templateproject.data.pagecache.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
