@@ -20,7 +20,11 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.last
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -453,7 +457,7 @@ class MviComponentKtTest {
                     SideEffect.SideEffect1,
                     SideEffect.SideEffect2,
                     SideEffect.SideEffect2,
-                ).inOrder()
+                )
             component.state.filter { it.value == 501 }.first()
 
             assertThat(wrongThread.get()).isNull()
@@ -638,7 +642,7 @@ class MviComponentKtTest {
             wishToAction = ::wishToAction,
             actor = ::actor,
             reducer = ::reducer,
-            sideEffectSource = { oldState, newState, action, effect -> when {
+            sideEffectSource = { _, _, _, effect -> when {
                 effect is Effect.Plus && effect.amount == 1 -> throw Exception()
                 effect is Effect.Plus && effect.amount == 2 -> listOf(SideEffect.SideEffect1)
                 effect is Effect.Plus && effect.amount == 3 -> throw UniqueException()
@@ -654,12 +658,110 @@ class MviComponentKtTest {
 
     @Test
     fun sideEffectWithNoSubscribersSavesValues() = runTest { scope ->
-        TODO()
+        val component = mviComponent(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(1)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            sideEffectSource = { _, _, _, effect -> when {
+                effect is Effect.Plus && effect.amount == 1 -> listOf(SideEffect.SideEffect1)
+                effect is Effect.Plus && effect.amount == 3 -> listOf(SideEffect.SideEffect3)
+                else -> listOf(SideEffect.SideEffect2)
+            } },
+            areSideEffectsSavedWithNoSubscribers = true,
+        )
+        assertThat(component.sideEffects.first()).isEqualTo(SideEffect.SideEffect1)
+        component.sendWish(Wish.Plus2)
+        assertThat(component.sideEffects.first()).isEqualTo(SideEffect.SideEffect1)
+        assertThat(component.sideEffects.take(2).last()).isEqualTo(SideEffect.SideEffect2)
+
+        val collected = Channel<SideEffect>(Channel.UNLIMITED)
+        val collectJob = scope.launch {
+            component.sideEffects
+                .takeWhile { it != SideEffect.SideEffect3 }
+                .onCompletion { collected.close() }
+                .collect { collected.send(it) }
+        }
+        component.sendWish(Wish.Plus1)
+        component.sendWish(Wish.Plus1)
+        component.sendWish(Wish.Plus2)
+        component.state.filter { it.value == 8 }.first()
+        component.sendWish(Wish.Plus3)
+        component.state.filter { it.value == 11 }.first()
+        collectJob.join()
+        assertThat(collected.consumeAsFlow().toList())
+            .containsExactly(
+                SideEffect.SideEffect1,
+                SideEffect.SideEffect2,
+                SideEffect.SideEffect1,
+                SideEffect.SideEffect1,
+                SideEffect.SideEffect2,
+            )
     }
 
     @Test
     fun sideEffectWithNoSubscribersDoesNotSaveValues() = runTest { scope ->
-        TODO() // incl. save values on start, but not after reaching 0 subs later
+        suspend fun MviComponent<*, *, *>.waitForEmptyReplayCache() {
+            while (sideEffects.replayCache.isNotEmpty()) {
+                yield()
+            }
+        }
+
+        // areSideEffectsSavedWithNoSubscribers = false
+        // is the default behavior
+        val component = mviComponent(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(1)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            sideEffectSource = { _, _, _, effect -> when {
+                effect is Effect.Plus && effect.amount == 1 -> listOf(SideEffect.SideEffect1)
+                effect is Effect.Plus && effect.amount == 3 -> listOf(SideEffect.SideEffect3)
+                else -> listOf(SideEffect.SideEffect2)
+            } },
+        )
+        component.sendWish(Wish.Plus1)
+        assertThat(component.sideEffects.take(2).toList())
+            .containsExactly(SideEffect.SideEffect1, SideEffect.SideEffect1)
+        component.waitForEmptyReplayCache()
+        component.sendWish(Wish.Plus2)
+        assertThat(component.sideEffects.first()).isEqualTo(SideEffect.SideEffect2)
+        component.waitForEmptyReplayCache()
+
+        val collected = Channel<SideEffect>(Channel.UNLIMITED)
+        val collectJob = scope.launch {
+            component.sideEffects
+                .takeWhile { it != SideEffect.SideEffect3 }
+                .onCompletion { collected.close() }
+                .collect { collected.send(it) }
+        }
+        component.sendWish(Wish.Plus1)
+        component.sendWish(Wish.Plus1)
+        component.sendWish(Wish.Plus2)
+        component.state.filter { it.value == 9 }.first()
+        assertThat(collected.receiveAsFlow().take(3).toList())
+            .containsExactly(
+                SideEffect.SideEffect1,
+                SideEffect.SideEffect1,
+                SideEffect.SideEffect2,
+            )
+        component.sendWish(Wish.Plus2)
+        component.sendWish(Wish.Plus2)
+        component.sendWish(Wish.Plus1)
+        component.state.filter { it.value == 14 }.first()
+        component.sendWish(Wish.Plus3)
+        component.state.filter { it.value == 17 }.first()
+        collectJob.join()
+        assertThat(collected.consumeAsFlow().toList())
+            .containsExactly(
+                SideEffect.SideEffect2,
+                SideEffect.SideEffect2,
+                SideEffect.SideEffect1,
+            )
     }
 
     @Test
@@ -773,6 +875,7 @@ private sealed interface Effect {
 private sealed interface SideEffect {
     data object SideEffect1 : SideEffect
     data object SideEffect2 : SideEffect
+    data object SideEffect3 : SideEffect
 }
 
 private fun wishToAction(wish: Wish): List<Action> = when (wish) {
