@@ -12,4 +12,4 @@ annotation class IoDispatcher
 
 @Qualifier
 @Retention(AnnotationRetention.SOURCE)
-annotation class RepositoryScope
+annotation class BackgroundIoScope

@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kapt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.protobuf.plugin)
 }
 
 android {
@@ -47,18 +48,34 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
+        kotlinCompilerExtensionVersion = libs.versions.kotlin.compiler.extension.get()
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    kapt {
-        correctErrorTypes = true
+}
+
+kapt {
+    correctErrorTypes = true
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.asProvider().get()}"
     }
-    ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins {
+                create("kotlin")
+                create("java")
+            }
+        }
     }
 }
 
@@ -89,6 +106,9 @@ dependencies {
     implementation(libs.retrofit.converter.scalars)
 
     implementation(libs.timber)
+
+    implementation(libs.datastore)
+    implementation(libs.protobuf)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)

@@ -9,7 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import net.domisafonov.templateproject.di.IoDispatcher
-import net.domisafonov.templateproject.di.RepositoryScope
+import net.domisafonov.templateproject.di.BackgroundIoScope
 import javax.inject.Singleton
 
 @Module
@@ -18,7 +18,7 @@ object CoroutinesModule {
 
     @Provides
     @Singleton
-    @RepositoryScope
+    @BackgroundIoScope
     fun repositoryScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Provides

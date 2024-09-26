@@ -6,12 +6,15 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDeepLink
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.dialog
 import androidx.navigation.get
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -23,6 +26,7 @@ import net.domisafonov.templateproject.ui.mainscreen.MainScreen
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBar
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarEvent
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarState
+import net.domisafonov.templateproject.ui.mainscreen.UrlDialog
 import net.domisafonov.templateproject.ui.topbar.AppBarController
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
 import timber.log.Timber
@@ -50,15 +54,16 @@ fun NavHost(
             label = mainLabel,
         ) { _, controller ->
             MainScreen(
-                onTenthClick = { appState.navController.navigate("details/tenchcharacter") },
-                onWordCountClick = { appState.navController.navigate("details/wordcount") },
-                onUrlButtonClick = { TODO() },
+                onTenthClick = { appState.navController.navigate("details/tenth_character") },
+                onWordCountClick = { appState.navController.navigate("details/word_count") },
+                onUrlButtonClick = { appState.navController.navigate("main/url_dialog") },
                 appBarController = controller,
             )
         }
+        dialog(route = "main/url_dialog") { UrlDialog() }
 
-        composable(appState = appState, route = "details/tenchcharacter", label = tenthLabel) { TenthCharacterScreen() }
-        composable(appState = appState, route = "details/wordcount", label = wordCountLabel) { WordCountScreen() }
+        composable(appState = appState, route = "details/tenth_character", label = tenthLabel) { TenthCharacterScreen() }
+        composable(appState = appState, route = "details/word_count", label = wordCountLabel) { WordCountScreen() }
     }
 }
 

@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option java_package = "net.domisafonov.templateproject.data.settings_store.proto";
+option java_outer_classname = "ProtoSettingsStore";
+option java_multiple_files = true;
+
+message ProtoSettings {
+  string url = 1;
+}

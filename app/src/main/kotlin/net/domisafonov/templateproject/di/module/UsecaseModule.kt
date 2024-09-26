@@ -8,6 +8,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import net.domisafonov.templateproject.di.IoDispatcher
 import net.domisafonov.templateproject.domain.repository.PageRepository
+import net.domisafonov.templateproject.domain.repository.SettingsRepository
 import net.domisafonov.templateproject.domain.usecase.MakeTenthCharacterTextUc
 import net.domisafonov.templateproject.domain.usecase.MakeTenthCharacterTextUcImpl
 import net.domisafonov.templateproject.domain.usecase.MakeWordCountTextUc
@@ -35,9 +36,11 @@ object UsecaseModule {
     @Reusable
     fun observeWordCountText(
         pageRepository: PageRepository,
+        settingsRepository: SettingsRepository,
         makeWordCountTextUc: MakeWordCountTextUc,
     ): ObserveWordCountTextUc = ObserveWordCountTextUcImpl(
         pageRepository = pageRepository,
+        settingsRepository = settingsRepository,
         makeWordCountTextUc = makeWordCountTextUc,
     )
 
@@ -53,9 +56,11 @@ object UsecaseModule {
     @Reusable
     fun observeTenthCharacterText(
         pageRepository: PageRepository,
+        settingsRepository: SettingsRepository,
         makeTenthCharacterTextUc: MakeTenthCharacterTextUc,
     ): ObserveTenthCharacterTextUc = ObserveTenthCharacterTextUcImpl(
         pageRepository = pageRepository,
+        settingsRepository = settingsRepository,
         makeTenthCharacterTextUc = makeTenthCharacterTextUc,
     )
 
