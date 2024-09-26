@@ -35,6 +35,13 @@ import timber.log.Timber
 private const val DEFAULT_WISH_CAPACITY = 64
 private const val DEFAULT_SIDE_EFFECT_BUFFER_CAPACITY = 64
 private const val DEFAULT_ACTION_CONCURRENCY_LIMIT = 16
+internal fun defaultErrorHandler(e: Exception): Boolean = // TODO: non-android variation for KMP
+    if (BuildConfig.DEBUG) {
+        false
+    } else {
+        Timber.e(e, "error in mvi callback")
+        true
+    }
 
 interface MviComponent<State : Any, Wish : Any, SideEffect : Any> : SendChannel<Wish> {
     val state: StateFlow<State>
@@ -73,6 +80,7 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
     actionConcurrencyLimit: Int = DEFAULT_ACTION_CONCURRENCY_LIMIT,
     sideEffectBufferCapacity: Int = DEFAULT_SIDE_EFFECT_BUFFER_CAPACITY,
     actorDispatcher: CoroutineDispatcher? = null,
+    errorHandler: (e: Exception) -> Boolean = ::defaultErrorHandler,
 ): MviComponent<State, Wish, SideEffect> {
     if (wishCapacity <= 0) {
         throw IllegalArgumentException()
@@ -117,14 +125,14 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
         val allActions = merge(
             bootstrapper.asFlow(),
             input.consumeAsFlow()
-                .mapNotNull { wrap { wishToAction(it) }?.asFlow() }
+                .mapNotNull { wrap(errorHandler) { wishToAction(it) }?.asFlow() }
                 .flattenConcat(),
             inducedActions.consumeAsFlow(),
         )
 
         allActions
             .mapNotNull { action ->
-                wrap {
+                wrap(errorHandler) {
                     if (actorDispatcher != null) {
                         withContext(actorDispatcher) {
                             actor(state.value, action)
@@ -135,11 +143,10 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
                 }
                     ?.catch { e ->
                         e as? Exception ?: throw e
-                        if (BuildConfig.DEBUG) {
-                            throw e
-                        } else {
-                            Timber.e(e, "error in flow from actor")
+                        if (errorHandler(e)) {
                             emptyFlow<Effect>()
+                        } else {
+                            throw e
                         }
                     }
                     ?.map { action to it }
@@ -147,10 +154,12 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
             .flattenMerge(concurrency = actionConcurrencyLimit)
             .collect { (action, effect) ->
                 val oldState = state.value
-                val newState = wrap { reducer(oldState, effect) } ?: return@collect
+                val newState = wrap(errorHandler) { reducer(oldState, effect) } ?: return@collect
                 state.value = newState
-                wrap { postProcessor(oldState, newState, action, effect) }?.forEach { inducedActions.trySend(it) }
-                wrap { sideEffectSource(oldState, newState, action, effect) }?.forEach { sideEffects.trySend(it) }
+                wrap(errorHandler) { postProcessor(oldState, newState, action, effect) }
+                    ?.forEach { inducedActions.trySend(it) }
+                wrap(errorHandler) { sideEffectSource(oldState, newState, action, effect) }
+                    ?.forEach { sideEffects.trySend(it) }
             }
     }
 
@@ -175,13 +184,15 @@ private val ResettingReplayCacheOnZeroImpl = SharingStarted { subscriptionCount 
 
 private val SharingStarted.Companion.ResettingReplayCacheOnZero get() = ResettingReplayCacheOnZeroImpl
 
-private inline fun <R : Any> wrap(lambda: () -> R): R? = try {
+private inline fun <R : Any> wrap(
+    handler: (Exception) -> Boolean,
+    lambda: () -> R
+): R? = try {
     lambda()
 } catch (e: Exception) {
-    if (BuildConfig.DEBUG) {
-        throw e
-    } else {
-        Timber.e(e, "error in mvi callbacks")
+    if (handler(e)) {
         null
+    } else {
+        throw e
     }
 }

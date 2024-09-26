@@ -3,15 +3,18 @@
 package net.domisafonov.templateproject.mvi
 
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -19,8 +22,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -171,10 +177,16 @@ class MviComponentKtTest {
                 (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(1000))
                 else -> emptyList()
             } },
-            sideEffectSource = { _, _, _, _ -> callCount.getAndIncrement(); emptyList() },
+            sideEffectSource = { _, _, action, _ ->
+                if ((action as? Action.Plus)?.amount != 1) {
+                    callCount.getAndIncrement()
+                }
+                emptyList()
+            },
         )
         component.sendWish(Wish.Plus10)
-        component.state.filter { it.value == 1111 }.first()
+        component.sendWish(Wish.Plus1)
+        component.state.filter { it.value == 1112 }.first()
         assertThat(callCount.get()).isEqualTo(3)
     }
 
@@ -316,11 +328,11 @@ class MviComponentKtTest {
             } },
         )
         component.sendWish(Wish.ActorMultiplus100)
-        scope.async { delay(11.milliseconds) }.await()
+        scope.launch { delay(11.milliseconds) }.join()
         component.sendWish(Wish.Plus1)
-        scope.async { delay(5.milliseconds) }.await()
+        scope.launch { delay(5.milliseconds) }.join()
         component.sendWish(Wish.Plus1)
-        scope.async { delay(10.milliseconds) }.await()
+        scope.launch { delay(10.milliseconds) }.join()
         component.sendWish(Wish.Plus1)
         component.state.filter { it.value == 207 }.first()
     }
@@ -346,24 +358,15 @@ class MviComponentKtTest {
             postProcessor = { _, _, action, effect ->
                 checkDispatcher()
                 when {
-                    (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(
-                        Action.Plus(200)
-                    )
-
+                    (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(200))
                     else -> emptyList()
                 }
             },
             sideEffectSource = { _, _, action, effect ->
                 checkDispatcher()
                 when {
-                    (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(
-                        SideEffect.SideEffect1
-                    )
-
-                    (action as? Action.Plus)?.amount == 200 && effect is Effect.Plus -> listOf(
-                        SideEffect.SideEffect2
-                    )
-
+                    (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(SideEffect.SideEffect1)
+                    (action as? Action.Plus)?.amount == 200 && effect is Effect.Plus -> listOf(SideEffect.SideEffect2)
                     else -> emptyList()
                 }
             },
@@ -381,40 +384,134 @@ class MviComponentKtTest {
     } }
 
     @Test
-    fun actorExecutesOnActorDispatcher() = runTest { scope ->
-        TODO()
+    fun actorExecutesOnActorDispatcher() = runTest { scope -> newSingleThreadContext("actorExecutesOnActorDispatcher")
+        .use { singleThread ->
+            val wrongThread = AtomicReference(null as String?)
+
+            fun checkDispatcher(isActorThread: Boolean = false) {
+                val threadName = Thread.currentThread().name
+                if (isActorThread xor threadName.contains("actorExecutesOnActorDispatcher")) {
+                    wrongThread.set(threadName)
+                }
+            }
+
+            val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+                scope = scope,
+                initialState = State(1),
+                bootstrapper = listOf(Action.Plus(100)),
+                wishToAction = { wish -> checkDispatcher(); wishToAction(wish) },
+                actor = { state, action -> checkDispatcher(isActorThread = true); actor(state, action) },
+                reducer = { state, effect -> checkDispatcher(); reducer(state, effect) },
+                postProcessor = { _, _, action, effect ->
+                    checkDispatcher()
+                    when {
+                        (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(
+                            Action.Plus(200)
+                        )
+
+                        else -> emptyList()
+                    }
+                },
+                sideEffectSource = { _, _, action, effect ->
+                    checkDispatcher()
+                    when {
+                        (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus ->
+                            listOf(SideEffect.SideEffect1)
+                        (action as? Action.Plus)?.amount == 200 && effect is Effect.Plus ->
+                            listOf(SideEffect.SideEffect2)
+                        else -> emptyList()
+                    }
+                },
+                actorDispatcher = singleThread,
+            )
+            component.sendWish(Wish.Plus200)
+            assertThat(component.sideEffects.take(3).toList())
+                .containsExactly(
+                    SideEffect.SideEffect1,
+                    SideEffect.SideEffect2,
+                    SideEffect.SideEffect2,
+                ).inOrder()
+            component.state.filter { it.value == 501 }.first()
+
+            assertThat(wrongThread.get()).isNull()
+        }
     }
 
     @Test
     fun postProcessorRecursion() = runTest { scope ->
-        TODO()
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(1)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, action, effect -> when {
+                action is Action.Plus && action.amount < 5 && effect is Effect.Plus ->
+                    listOf(Action.Plus(action.amount + 1), Action.Plus(amount = action.amount + 1))
+                else -> emptyList()
+            } },
+        )
+        component.state.filter { it.value == 130 }.first()
     }
 
     @Test
-    fun limits() = runTest { scope ->
-        TODO()
+    fun throwErrorFromWishToActionAndContinue() = runTest { scope ->
+        val (component, errors) = makeWishErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus10)
+        component.sendWish(Wish.Plus200)
+        component.state.filter { it.value == 201 }.first()
+        errors.close()
+        assertThat(errors.consumeAsFlow().toList().map { it::class }).containsExactly(java.lang.Exception::class)
     }
 
-    @Test
-    fun throwErrorFromWishToAction() = runTest { scope -> // bootstrapper, send
-        TODO()
+    @Test(expected = UniqueError::class)
+    fun throwErrorFromWishToActionStopByErrorBackground() = runTest(doMultiScope = false) { scope ->
+        val (component, _) = makeWishErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus1)
+        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
     }
 
+    @Test(expected = UniqueError::class)
+    fun throwErrorFromWishToActionStopByErrorMulti() = runTest(doBackgroundScope = false) { scope ->
+        val (component, _) = makeWishErrorComponent(scope = scope)
+        component.sendWish(Wish.Plus1)
+        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
+    }
+
+    @Test(expected = UniqueException::class)
+    fun throwErrorFromWishToActionStopByHandlerBackground() = runTest(doMultiScope = false) { scope ->
+        val (component, _) = makeWishErrorComponent(scope = scope)
+        component.sendWish(Wish.Empty)
+        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
+    }
+
+    @Test(expected = UniqueException::class)
+    fun throwErrorFromWishToActionStopByHandlerMulti() = runTest(doBackgroundScope = false) { scope ->
+        val (component, _) = makeWishErrorComponent(scope = scope)
+        component.sendWish(Wish.Empty)
+        while (scope.coroutineContext.job.children.count() > 1) { yield() } // side effects' shareIn remains alive
+    }
+
+    // also, test the default handler
     @Test
     fun throwErrorFromActor() = runTest { scope -> // normal, from postprocessor
         TODO()
     }
 
+    // also, test the default handler
     @Test
     fun throwErrorFromReducer() = runTest { scope ->
         TODO()
     }
 
+    // also, test the default handler
     @Test
     fun throwErrorFromPostProcessor() = runTest { scope ->
         TODO()
     }
 
+    // also, test the default handler
     @Test
     fun throwErrorFromSideEffectProducer() = runTest { scope ->
         TODO()
@@ -445,35 +542,53 @@ class MviComponentKtTest {
         TODO()
     }
 
+    @Test
+    fun limits() = runTest { scope ->
+        TODO()
+    }
+
     private fun runTest(
         context: CoroutineContext = EmptyCoroutineContext,
         doMultiScope: Boolean = true,
+        doBackgroundScope: Boolean = true,
         testBody: suspend TestScope.(mviScope: CoroutineScope) -> Unit,
     ) {
-        // backgroundScope is single-threaded
-        kotlinx.coroutines.test.runTest(
-            context = context,
-            timeout = 100.milliseconds,
-        ) {
-            testBody(backgroundScope)
+        if (!doMultiScope && !doBackgroundScope) {
+            throw TestImplError()
+        }
+
+        if (doBackgroundScope) {
+            // backgroundScope is single-threaded
+            kotlinx.coroutines.test.runTest(
+                context = context,
+                timeout = 200.milliseconds,
+            ) {
+                testBody(backgroundScope)
+            }
         }
 
         if (doMultiScope) {
             // scope is multithreaded
             kotlinx.coroutines.test.runTest(
                 context = context,
-                timeout = 100.milliseconds,
+                timeout = 200.milliseconds,
             ) {
                 testBody(multithreadedScope)
+                scopeError.error?.let {
+                    scopeError.error = null
+                    throw it
+                }
             }
         }
     }
 
     private lateinit var multithreadedScope: CoroutineScope
+    private lateinit var scopeError: ErrorStore
 
     @Before
     fun initScope() {
-        multithreadedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        scopeError = ErrorStore()
+        multithreadedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default + scopeError)
     }
 
     @After
@@ -542,14 +657,53 @@ private fun reducer(state: State, effect: Effect): State = when (effect) {
     is Effect.Plus -> state.copy(value = state.value + effect.amount)
 }
 
+private fun makeWishErrorComponent(
+    scope: CoroutineScope,
+): Pair<MviComponent<State, Wish, SideEffect>, Channel<Throwable>> {
+    val errors = Channel<Throwable>(Channel.BUFFERED)
+
+    return mviComponent<State, Wish, Action, Effect, SideEffect>(
+        scope = scope,
+        initialState = State(1),
+        wishToAction = {
+            when (it) {
+                is Wish.Plus1 -> throw UniqueError()
+                is Wish.Plus10 -> throw Exception()
+                is Wish.Plus200 -> listOf(Action.Plus(200))
+                else -> throw UniqueException()
+            }
+        },
+        actor = ::actor,
+        reducer = ::reducer,
+        errorHandler = { e ->
+            errors.trySend(e)
+            e !is UniqueException
+        }
+    ) to errors
+}
+
 private suspend fun scopeWithNamedThread(lambda: suspend (scope: CoroutineScope, name: String) -> Unit) {
     val name = UUID.randomUUID().toString()
     newSingleThreadContext(name).use { dispatcher ->
-        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val scope = CoroutineScope(Job() + dispatcher)
         try {
             lambda(scope, name)
         } finally {
-            scope.coroutineContext.cancel()
+            scope.cancel()
         }
     }
 }
+
+private class ErrorStore : CoroutineExceptionHandler {
+    @Volatile var error: Throwable? = null
+    override val key = CoroutineExceptionHandler
+    override fun handleException(context: CoroutineContext, exception: Throwable) {
+        if (error == null) {
+            error = exception
+        }
+    }
+}
+
+private class UniqueError : Error()
+private class UniqueException : Exception()
+private class TestImplError : Error()
