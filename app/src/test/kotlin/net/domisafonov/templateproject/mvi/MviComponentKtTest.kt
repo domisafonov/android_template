@@ -313,9 +313,8 @@ class MviComponentKtTest {
         component.state.filter { it.value == 101 }.first()
     }
 
-    // FIXME: also, test that it actually runs in parallel
     @Test
-    fun parallelActions() = runTest { scope ->
+    fun parallelActionsOutcome() = runTest { scope ->
         val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
             scope = scope,
             initialState = State(1),
@@ -336,6 +335,29 @@ class MviComponentKtTest {
         scope.launch { delay(10.milliseconds) }.join()
         component.sendWish(Wish.Plus1)
         component.state.filter { it.value == 207 }.first()
+    }
+
+    @Test
+    fun parallelActionsAreReallyParallel() = runTest { scope ->
+        val component = mviComponent(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.LongMulti),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            sideEffectSource = { _, _, _, effect -> when {
+                effect is Effect.Plus && effect.amount == 10 -> listOf(SideEffect.SideEffect1)
+                effect is Effect.Plus && effect.amount == 11 -> listOf(SideEffect.SideEffect2)
+                else -> emptyList()
+            } }
+        )
+        scope.launch { delay(1.milliseconds) }.join()
+        component.sendWish(Wish.Plus11)
+        val effects = component.sideEffects.take(11).toList()
+        assertThat(effects).contains(SideEffect.SideEffect2)
+        assertThat(effects.toMutableList().apply { remove(SideEffect.SideEffect2) }).doesNotContain(SideEffect.SideEffect2)
+        assertThat(effects.indexOf(SideEffect.SideEffect2)).isLessThan(10)
     }
 
     @Test
