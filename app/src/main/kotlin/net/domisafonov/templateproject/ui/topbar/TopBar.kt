@@ -24,7 +24,9 @@ fun TopBar(appState: AppState) {
 
     val defaultLabel = stringResource(id = R.string.default_label)
 
-    val topBarActions = appState.appBarActions.value
+    val actions: @Composable RowScope.() -> Unit = {
+        appState.appBarActions.value?.invoke(this)
+    }
 
     val state by appState.navController.currentBackStackEntryFlow
         .map {
@@ -38,7 +40,7 @@ fun TopBar(appState: AppState) {
             TopBarState(
                 title = it.destination.label?.toString() ?: defaultLabel,
                 hasBackButton = it.destination.route != MAIN_NAV_ID,
-                actions = { topBarActions?.invoke(this) },
+                actions = actions,
             )
         }
         .collectAsState(
