@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,11 +60,8 @@ fun UrlDialogUi(
     onCancelClick: () -> Unit = {},
     onSaveClick: () -> Unit = {},
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(8.dp),
+    Card(
+        modifier = modifier.fillMaxWidth()
     ) {
         Text(
             text = stringResource(id = R.string.url_dialog_title),
@@ -74,9 +72,7 @@ fun UrlDialogUi(
         TextField(
             value = text,
             onValueChange = onTextChanged,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
             isError = error != null,
             label = { error?.let { Text(text = it) } },
             singleLine = true,
