@@ -2,6 +2,7 @@
 
 package net.domisafonov.templateproject.mvi
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.domisafonov.templateproject.BuildConfig
 import timber.log.Timber
 
@@ -71,6 +73,7 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
     wishCapacity: Int = DEFAULT_WISH_CAPACITY,
     actionConcurrencyLimit: Int = DEFAULT_ACTION_CONCURRENCY_LIMIT,
     sideEffectBufferCapacity: Int = DEFAULT_SIDE_EFFECT_BUFFER_CAPACITY,
+    actorDispatcher: CoroutineDispatcher? = null,
 ): MviComponent<State, Wish, SideEffect> {
     if (wishCapacity <= 0) {
         throw IllegalArgumentException()
@@ -122,7 +125,15 @@ fun <State : Any, Wish : Any, Action : Any, Effect : Any, SideEffect : Any> mviC
 
         allActions
             .mapNotNull { action ->
-                wrap { actor(state.value, action) }
+                wrap {
+                    if (actorDispatcher != null) {
+                        withContext(actorDispatcher) {
+                            actor(state.value, action)
+                        }
+                    } else {
+                        actor(state.value, action)
+                    }
+                }
                     ?.catch { e ->
                         e as? Exception ?: throw e
                         if (BuildConfig.DEBUG) {

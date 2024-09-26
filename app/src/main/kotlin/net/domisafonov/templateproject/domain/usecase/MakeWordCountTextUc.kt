@@ -18,7 +18,6 @@ import kotlinx.coroutines.withContext
  * characters special from Unicode are not accounted for.
  */
 fun interface MakeWordCountTextUc {
-
     suspend fun execute(src: String): List<String>
 }
 
