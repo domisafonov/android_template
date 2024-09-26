@@ -38,7 +38,7 @@ fun TopBar(appState: AppState) {
             TopBarState(
                 title = it.destination.label?.toString() ?: defaultLabel,
                 hasBackButton = it.destination.route != MAIN_NAV_ID,
-                actions = topBarActions ?: {},
+                actions = { topBarActions?.invoke(this) },
             )
         }
         .collectAsState(

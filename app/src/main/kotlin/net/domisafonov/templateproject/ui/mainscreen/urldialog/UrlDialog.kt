@@ -48,7 +48,7 @@ fun UrlDialog(
 @Composable
 fun UrlDialogUi(
     text: String,
-    error: String?, // TODO
+    error: String?,
     modifier: Modifier = Modifier,
     onTextChanged: (value: String) -> Unit = {},
     onCancelClick: () -> Unit = {},
@@ -72,6 +72,9 @@ fun UrlDialogUi(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
+            isError = error != null,
+            label = { error?.let { Text(text = it) } },
+            singleLine = true,
         )
 
         Row(
@@ -83,7 +86,7 @@ fun UrlDialogUi(
             TextButton(onClick = onCancelClick) {
                 Text(text = stringResource(id = R.string.dialog_cancel))
             }
-            TextButton(onClick = onSaveClick) {
+            TextButton(onClick = onSaveClick, enabled = error == null) {
                 Text(text = stringResource(id = R.string.dialog_save))
             }
         }
@@ -99,5 +102,5 @@ fun UrlDialogUiNormalPreview() {
 @Preview(showBackground = true)
 @Composable
 fun UrlDialogUiErrorPreview() {
-    UrlDialogUi(text = "/about/", error = "error")
+    UrlDialogUi(text = "/about/", error = "Error")
 }
