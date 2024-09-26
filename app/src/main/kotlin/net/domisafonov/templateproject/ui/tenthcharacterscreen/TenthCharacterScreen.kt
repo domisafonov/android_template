@@ -12,8 +12,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -46,7 +50,9 @@ fun TenthCharacterScreen(
 
     if (!doCompactView) {
         if (pullRefreshState.isRefreshing) {
-            viewModel.setRefreshing(true)
+            LaunchedEffect(pullRefreshState.isRefreshing) {
+                viewModel.setRefreshing(true)
+            }
         }
 
         if (isRefreshCompleted) {
