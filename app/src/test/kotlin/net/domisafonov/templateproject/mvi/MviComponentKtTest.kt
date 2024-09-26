@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -15,6 +16,8 @@ import kotlinx.coroutines.test.TestScope
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import java.lang.AssertionError
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
@@ -35,7 +38,7 @@ class MviComponentKtTest {
                 else -> emptyList()
             } },
         )
-        component.sendWish(Wish.WishPlus1)
+        component.sendWish(Wish.Plus1)
         component.state.filter { it.value == 11102 }.first()
     }
 
@@ -58,7 +61,7 @@ class MviComponentKtTest {
                 else -> emptyList()
             } },
         )
-        component.sendWish(Wish.WishPlus200)
+        component.sendWish(Wish.Plus200)
         testScheduler.advanceUntilIdle()
         assertThat(component.sideEffects.take(3).toList())
             .containsExactly(SideEffect.SideEffect1, SideEffect.SideEffect2, SideEffect.SideEffect2)
@@ -66,53 +69,159 @@ class MviComponentKtTest {
     }
 
     @Test
-    fun wishToActionIsCalled() = runTest { scope -> // bootstrapper, send
-        TODO()
+    fun wishToActionIsCalled() = runTest { scope ->
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = { callCount.getAndIncrement(); wishToAction(it) },
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(1000))
+                else -> emptyList()
+            } },
+        )
+        component.sendWish(Wish.Plus10)
+        component.state.filter { it.value == 1111 }.first()
+        assertThat(callCount.get()).isEqualTo(1)
     }
 
     @Test
-    fun actorIsCalled() = runTest { scope -> // normal, from postprocessor
-        TODO()
+    fun actorIsCalled() = runTest { scope ->
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = ::wishToAction,
+            actor = { state, action -> callCount.getAndIncrement(); actor(state, action) },
+            reducer = ::reducer,
+            postProcessor = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(1000))
+                else -> emptyList()
+            } },
+        )
+        component.sendWish(Wish.Plus10)
+        component.state.filter { it.value == 1111 }.first()
+        assertThat(callCount.get()).isEqualTo(3)
     }
 
     @Test
     fun reducerIsCalled() = runTest { scope ->
-        TODO()
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = { state, effect -> callCount.getAndIncrement(); reducer(state, effect) },
+            postProcessor = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(1000))
+                else -> emptyList()
+            } },
+        )
+        component.sendWish(Wish.Plus10)
+        component.state.filter { it.value == 1111 }.first()
+        assertThat(callCount.get()).isEqualTo(3)
     }
 
     @Test
     fun postProcessorIsCalled() = runTest { scope ->
-        TODO()
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, action, effect -> callCount.getAndIncrement(); when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(1000))
+                else -> emptyList()
+            } },
+        )
+        component.sendWish(Wish.Plus10)
+        component.state.filter { it.value == 1111 }.first()
+        assertThat(callCount.get()).isEqualTo(3)
     }
 
     @Test
     fun sideEffectProducerIsCalled() = runTest { scope ->
-        TODO()
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Plus(100)),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = ::reducer,
+            postProcessor = { _, _, action, effect -> when {
+                (action as? Action.Plus)?.amount == 100 && effect is Effect.Plus -> listOf(Action.Plus(1000))
+                else -> emptyList()
+            } },
+            sideEffectSource = { _, _, _, _ -> callCount.getAndIncrement(); emptyList() },
+        )
+        component.sendWish(Wish.Plus10)
+        component.state.filter { it.value == 1111 }.first()
+        assertThat(callCount.get()).isEqualTo(3)
     }
 
     @Test
-    fun returnEmptyFromWishToAction() = runTest { scope -> // bootstrapper, send
-        TODO()
+    fun returnEmptyFromWishToAction() = runTest { scope ->
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            wishToAction = ::wishToAction,
+            actor = { state, action -> callCount.getAndIncrement(); actor(state, action) },
+            reducer = ::reducer,
+        )
+        component.sendWish(Wish.Nothing)
+        component.sendWish(Wish.Plus10)
+        component.state.filter { it.value == 11 }.first()
+        assertThat(callCount.get()).isEqualTo(1)
     }
 
     @Test
     fun returnEmptyFromActor() = runTest { scope -> // normal, from postprocessor
-        TODO()
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Empty),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = { state, effect -> callCount.getAndIncrement(); reducer(state, effect) },
+            actionConcurrencyLimit = 1,
+        )
+        component.sendWish(Wish.Empty)
+        component.sendWish(Wish.Plus10)
+        component.state.filter { it.value == 11 }.first()
+        assertThat(callCount.get()).isEqualTo(1)
     }
 
     @Test
     fun returnUnchangedFromReducer() = runTest { scope ->
-        TODO()
-    }
-
-    @Test
-    fun returnEmptyFromPostProcessor() = runTest { scope ->
-        TODO()
-    }
-
-    @Test
-    fun returnEmptyFromSideEffectProducer() = runTest { scope ->
-        TODO()
+        val callCount = AtomicInteger(0)
+        val component = mviComponent<State, Wish, Action, Effect, SideEffect>(
+            scope = scope,
+            initialState = State(1),
+            bootstrapper = listOf(Action.Ineffective),
+            wishToAction = ::wishToAction,
+            actor = ::actor,
+            reducer = { state, effect -> callCount.getAndIncrement(); reducer(state, effect) },
+            actionConcurrencyLimit = 1,
+        )
+        component.sendWish(Wish.Ineffective)
+        component.sendWish(Wish.Plus10)
+        val states = component.state.take(2).toList()
+        assertThat(states.last().value).isEqualTo(11)
+        if (states.size == 2 && states.first().value != 1) {
+            throw AssertionError("weird intermediate state: ${states.first()}")
+        }
     }
 
     @Test
@@ -252,14 +361,18 @@ class MviComponentKtTest {
 private data class State(val value: Int)
 
 private sealed interface Wish {
-    data object WishNothing : Wish
-    data object WishPlus1 : Wish
-    data object WishPlus10 : Wish
-    data object WishPlus200 : Wish
+    data object Nothing : Wish
+    data object Empty : Wish
+    data object Ineffective : Wish
+    data object Plus1 : Wish
+    data object Plus10 : Wish
+    data object Plus200 : Wish
 }
 
 private sealed interface Action {
     data class Plus(val amount: Int) : Action
+    data object Empty : Action
+    data object Ineffective : Action
 }
 
 private sealed interface Effect {
@@ -273,14 +386,18 @@ private sealed interface SideEffect {
 }
 
 private fun wishToAction(wish: Wish): List<Action> = when (wish) {
-    Wish.WishNothing -> emptyList()
-    Wish.WishPlus1 -> listOf(Action.Plus(1))
-    Wish.WishPlus10 -> listOf(Action.Plus(10))
-    Wish.WishPlus200 -> listOf(Action.Plus(200))
+    is Wish.Nothing -> emptyList()
+    is Wish.Empty -> listOf(Action.Empty)
+    is Wish.Ineffective -> listOf(Action.Ineffective)
+    is Wish.Plus1 -> listOf(Action.Plus(1))
+    is Wish.Plus10 -> listOf(Action.Plus(10))
+    is Wish.Plus200 -> listOf(Action.Plus(200))
 }
 
 private fun actor(state: State, action: Action): Flow<Effect> = when (action) {
     is Action.Plus -> flowOf(Effect.Plus(amount = action.amount))
+    is Action.Empty -> emptyFlow()
+    is Action.Ineffective -> flowOf(Effect.NoEffect)
 }
 
 private fun reducer(state: State, effect: Effect): State = when (effect) {
