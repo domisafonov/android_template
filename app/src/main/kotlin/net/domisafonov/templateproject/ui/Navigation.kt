@@ -24,7 +24,9 @@ import net.domisafonov.templateproject.ui.mainscreen.MainScreen
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBar
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarEvent
 import net.domisafonov.templateproject.ui.mainscreen.MainScreenAppBarState
+import net.domisafonov.templateproject.ui.mainscreen.MainScreenCoordinatorImpl
 import net.domisafonov.templateproject.ui.mainscreen.urldialog.UrlDialog
+import net.domisafonov.templateproject.ui.mainscreen.urldialog.UrlDialogCoordinatorImpl
 import net.domisafonov.templateproject.ui.topbar.AppBarController
 import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
 import timber.log.Timber
@@ -52,13 +54,15 @@ fun NavHost(
             label = mainLabel,
         ) { _, controller ->
             MainScreen(
-                onTenthClick = { appState.navController.navigate("details/tenth_character") },
-                onWordCountClick = { appState.navController.navigate("details/word_count") },
-                onUrlButtonClick = { appState.navController.navigate("main/url_dialog") },
+                coordinator = MainScreenCoordinatorImpl(navController = appState.navController),
                 appBarController = controller,
             )
         }
-        dialog(route = "main/url_dialog") { UrlDialog(onDismiss = { appState.navController.popBackStack() }) }
+        dialog(route = "main/url_dialog") {
+            UrlDialog(
+                coordinator = UrlDialogCoordinatorImpl(navHostController = appState.navController)
+            )
+        }
 
         composable(appState = appState, route = "details/tenth_character", label = tenthLabel) { TenthCharacterScreen() }
         composable(appState = appState, route = "details/word_count", label = wordCountLabel) { WordCountScreen() }

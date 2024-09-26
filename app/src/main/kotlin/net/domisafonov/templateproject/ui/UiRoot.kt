@@ -53,7 +53,7 @@ private fun IsOfflineMessages(
     val isOfflineMessage = stringResource(id = R.string.is_offline_message)
     val isOnlineMessage = stringResource(id = R.string.is_online_message)
 
-    LaunchedEffect (isOffline) {
+    LaunchedEffect(isOffline) {
         if (isFirstEvent) {
             isFirstEvent = false
             if (!isOffline) { return@LaunchedEffect }

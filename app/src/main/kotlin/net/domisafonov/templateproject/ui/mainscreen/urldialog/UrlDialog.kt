@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -23,7 +24,7 @@ import net.domisafonov.templateproject.R
 @Composable
 fun UrlDialog(
     modifier: Modifier = Modifier,
-    onDismiss: () -> Unit,
+    coordinator: UrlDialogCoordinator,
 ) {
     val viewModel: UrlDialogViewModel = hiltViewModel()
 
@@ -31,8 +32,10 @@ fun UrlDialog(
     val error by viewModel.error.collectAsState()
     val isDismissed by viewModel.isDismissed.collectAsState()
 
-    if (isDismissed) {
-        onDismiss()
+    LaunchedEffect(isDismissed) {
+        if (isDismissed) {
+            coordinator.goBack()
+        }
     }
 
     UrlDialogUi(
@@ -40,7 +43,7 @@ fun UrlDialog(
         error = error,
         modifier = modifier,
         onTextChanged = viewModel::onTextChanged,
-        onCancelClick = onDismiss,
+        onCancelClick = coordinator::goBack,
         onSaveClick = viewModel::onSaveClick,
     )
 }

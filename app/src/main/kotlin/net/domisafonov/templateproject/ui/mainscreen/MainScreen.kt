@@ -29,9 +29,7 @@ import net.domisafonov.templateproject.ui.wordcountscreen.WordCountScreen
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
-    onTenthClick: () -> Unit,
-    onWordCountClick: () -> Unit,
-    onUrlButtonClick: () -> Unit,
+    coordinator: MainScreenCoordinator,
     appBarController: AppBarController<MainScreenAppBarState, MainScreenAppBarEvent>,
 ) {
     val viewModel: MainScreenViewModel = hiltViewModel()
@@ -41,15 +39,15 @@ fun MainScreen(
         appBarController.setState(MainScreenAppBarState(isActivated = true))
         ActivatedUi(
             modifier = modifier,
-            onTenthClick = onTenthClick,
-            onWordCountClick = onWordCountClick,
+            onTenthClick = coordinator::openTenthCharacter,
+            onWordCountClick = coordinator::openWordCount,
         )
     } else {
         appBarController.setState(MainScreenAppBarState(isActivated = false))
 
         LaunchedEffect(appBarController) {
             appBarController.events.collect { event -> when (event) {
-                is MainScreenAppBarEvent.UrlButtonClick -> onUrlButtonClick()
+                is MainScreenAppBarEvent.UrlButtonClick -> coordinator.openUrlEditor()
             } }
         }
 
